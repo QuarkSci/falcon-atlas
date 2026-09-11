@@ -128,7 +128,13 @@ export class RocketScene {
     c.dampingFactor = 0.08
     c.minDistance = 1.5
     c.maxDistance = 600
-    c.maxPolarAngle = Math.PI * 0.94
+    // Keep a small margin off both poles: near vertical, azimuth becomes
+    // ill-defined and OrbitControls can snap or spin unpredictably.
+    c.minPolarAngle = Math.PI * 0.05
+    c.maxPolarAngle = Math.PI * 0.92
+    // Disabled while isolating a part (see the frame loop): cursor-relative
+    // zoom does not account for the camera's view offset there and can
+    // fling the framed part off-screen.
     c.zoomToCursor = true
     c.target.set(0, rocket.height / 2, 0)
     this.camera.position.set(60, rocket.height * 0.62, 150)
@@ -331,15 +337,63 @@ export class RocketScene {
     return this.host.clientWidth < 768
   }
 
-  /** Screen areas covered by UI chrome, in CSS pixels. */
-  private insets(s: SceneSnapshot): Insets {
-    const w = this.host.clientWidth,
-      mobile = this.isMobile()
-    const base: Insets = mobile ? { top: 140, bottom: 200, left: 16, right: 16 } : { top: 96, bottom: 150, left: 24, right: 24 }
-    if (!mobile && s.inspectorOpen) base.right = 400
-    if (!mobile && (this.amount > 0.6 || s.isolate) && w > 1100) base.left = 300
-    if (this.amount > 0.6) base.bottom += mobile ? 20 : 40
-    if (mobile && s.isolate && s.inspectorOpen) base.bottom = Math.round(this.host.clientHeight * 0.5)
+  /**
+   * Screen areas covered by UI chrome, in CSS pixels. Measured from the real
+   * DOM (siblings of the canvas in `.studio`) rather than guessed, so the
+   * isolated-part camera always leaves clear space next to whatever panels
+   * actually happen to be open, at any window size.
+   */
+  private insets(): Insets {
+    const mobile = this.isMobile()
+    const hostRect = this.host.getBoundingClientRect()
+    const gap = 20
+    const base: Insets = mobile ? { top: 88, bottom: 84, left: 16, right: 16 } : { top: 88, bottom: 96, left: 24, right: 24 }
+    const root = this.host.parentElement
+    const overlapsV = (r: DOMRect) => r.bottom > hostRect.top && r.top < hostRect.bottom
+    const overlapsH = (r: DOMRect) => r.right > hostRect.left && r.left < hostRect.right
+    const grow = (key: keyof Insets, value: number) => {
+      base[key] = Math.max(base[key], value)
+    }
+    if (root) {
+      const identity = root.querySelector('.identity')
+      const topActions = root.querySelector('.top-actions')
+      for (const el of [identity, topActions]) {
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        if (r.width > 0 && overlapsH(r)) grow('top', r.bottom - hostRect.top + 16)
+      }
+      const dock = root.querySelector('.bottom-dock')
+      if (dock) {
+        const r = dock.getBoundingClientRect()
+        if (r.width > 0) grow('bottom', hostRect.bottom - r.top + 16)
+      }
+      if (mobile) {
+        // Panels are bottom sheets or a top strip on narrow screens.
+        const inspector = root.querySelector('.inspector.open')
+        const systems = root.querySelector('.systems-panel.mobile-open')
+        const search = root.querySelector('.search-panel')
+        for (const el of [inspector, systems]) {
+          if (!el) continue
+          const r = (el as HTMLElement).getBoundingClientRect()
+          if (r.width > 0 && overlapsH(r)) grow('bottom', hostRect.bottom - r.top + gap)
+        }
+        if (search) {
+          const r = (search as HTMLElement).getBoundingClientRect()
+          if (r.width > 0) grow('top', r.bottom - hostRect.top + gap)
+        }
+      } else {
+        const systems = root.querySelector('.systems-panel')
+        if (systems) {
+          const r = systems.getBoundingClientRect()
+          if (r.width > 0 && overlapsV(r)) grow('left', r.right - hostRect.left + gap)
+        }
+        const inspector = root.querySelector('.inspector.open')
+        if (inspector) {
+          const r = (inspector as HTMLElement).getBoundingClientRect()
+          if (r.width > 0 && overlapsV(r)) grow('right', hostRect.right - r.left + gap)
+        }
+      }
+    }
     return base
   }
 
@@ -388,16 +442,16 @@ export class RocketScene {
   private frameFor(s: SceneSnapshot, animate: boolean) {
     if (s.isolate) {
       const box = this.visibleBox()
-      if (!box.isEmpty()) this.fitBox(box, s.view, this.insets(s), animate, 1.3)
+      if (!box.isEmpty()) this.fitBox(box, s.view, this.insets(), animate, 1.3)
       return
     }
     if (this.amount < 0.02) {
       const box = new T.Box3(new T.Vector3(-this.rocket.diameter * 1.5, -1, -this.rocket.diameter * 1.5), new T.Vector3(this.rocket.diameter * 1.5, this.rocket.height + 1, this.rocket.diameter * 1.5))
-      this.fitBox(box, s.view, this.insets(s), animate)
+      this.fitBox(box, s.view, this.insets(), animate)
       return
     }
     const box = this.visibleBox()
-    if (!box.isEmpty()) this.fitBox(box, this.amount > 0.8 ? 'front' : s.view, this.insets(s), animate, 1.06)
+    if (!box.isEmpty()) this.fitBox(box, this.amount > 0.8 ? 'front' : s.view, this.insets(), animate, 1.06)
   }
 
   // ── Explode ─────────────────────────────────────────────────────────
@@ -602,6 +656,7 @@ export class RocketScene {
     c.enableRotate = !board
     c.mouseButtons.LEFT = board ? T.MOUSE.PAN : T.MOUSE.ROTATE
     c.touches.ONE = board ? T.TOUCH.PAN : T.TOUCH.ROTATE
+    c.zoomToCursor = !s.isolate
     c.autoRotate = s.autoRotate && !s.isolate && this.amount < 0.4
     c.autoRotateSpeed = 0.6
     c.update()
