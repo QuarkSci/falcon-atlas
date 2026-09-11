@@ -1,5 +1,5 @@
 import * as T from 'three'
-import { box, cylinder, lathe, merge, shell, tank, type Profile } from '../primitives'
+import { blisterRing, box, cylinder, lathe, loft, merge, shell, tank, type Profile } from '../primitives'
 import { DOME_RATIO, FAIRING, GRID_FIN, INTERSTAGE, LEG, MERLIN, R, S1, S2 } from './dims'
 
 /**
@@ -28,9 +28,29 @@ export function octaweb() {
     parts.push(web)
   }
 
-  // Base heat-shield plate with the nine engine cut-outs suggested by rings.
-  const plate = cylinder(R, R, 0.06, 0, S1.octawebBottom + 0.03, 0, 8)
-  plate.rotateY(Math.PI / 8)
+  // Base heat-shield plate: an octagon with nine engine cut-outs.
+  const octagon = new T.Shape()
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8
+    const x = Math.cos(a) * (R - 0.01),
+      z = Math.sin(a) * (R - 0.01)
+    if (i === 0) octagon.moveTo(x, z)
+    else octagon.lineTo(x, z)
+  }
+  octagon.closePath()
+  const hole = (x: number, z: number) => {
+    const h = new T.Path()
+    h.absarc(x, z, MERLIN.chamberRadius + 0.14, 0, Math.PI * 2, true)
+    octagon.holes.push(h)
+  }
+  hole(0, 0)
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2
+    hole(Math.cos(a) * MERLIN.ringRadius, Math.sin(a) * MERLIN.ringRadius)
+  }
+  const plate = new T.ExtrudeGeometry(octagon, { depth: 0.08, bevelEnabled: false, curveSegments: 24 })
+  plate.rotateX(Math.PI / 2) // shape XY → XZ, extruded along -Y
+  plate.translate(0, S1.octawebBottom + 0.08, 0)
   parts.push(plate)
   const ringAt = (x: number, z: number) => {
     const ring = new T.TorusGeometry(MERLIN.chamberRadius + 0.1, 0.035, 8, 32)
@@ -108,11 +128,13 @@ export function gridFin() {
     plate = 0.018
   for (let i = 1; i < cols; i++) parts.push(box(t * 0.92, h - frame * 2, plate, 0, 0, -w / 2 + (i / cols) * w))
   for (let j = 1; j < rows; j++) parts.push(box(t * 0.92, plate, w - frame * 2, 0, -h / 2 + (j / rows) * h, 0))
-  // Hinge shaft and actuator boss on the inboard face.
-  const shaft = cylinder(0.07, 0.07, w * 0.6, 0, -h / 2 - 0.02, 0, 12)
+  // Hinge shaft along the top edge (the fin swings outward about it) and the
+  // rotary actuator housing at its inboard end.
+  const shaft = cylinder(0.07, 0.07, w * 0.7, 0, 0, 0, 12)
   shaft.rotateX(Math.PI / 2)
-  shaft.translate(-t / 2 - 0.04, -h / 2 - 0.02, 0)
+  shaft.translate(-t / 2 - 0.05, h / 2 + 0.04, 0)
   parts.push(shaft)
+  parts.push(box(0.26, 0.24, 0.3, -t / 2 - 0.06, h / 2 + 0.05, -w * 0.42))
   const g = merge(parts)
   g.translate(R + t / 2 + 0.06, GRID_FIN.y, 0)
   return g
@@ -120,35 +142,34 @@ export function gridFin() {
 
 /**
  * Landing leg, stowed along the base of the first stage. Built at +X, hinge
- * at the bottom, tapering toward the foot at the top. Includes the telescoping
- * strut that runs from the octaweb up to the leg's mid-span.
+ * at the bottom, tapering toward the foot at the top. The leg is a low
+ * aerodynamic blister lofted from a wide root to a narrow tip, with the
+ * telescoping strut and the folded foot pad.
  */
 export function landingLeg() {
   const { hingeY, length, rootWidth, tipWidth } = LEG
-  // Trapezoidal leg fairing extruded outward (radially) by a small depth.
-  const shape = new T.Shape()
-  shape.moveTo(-rootWidth / 2, 0)
-  shape.lineTo(rootWidth / 2, 0)
-  shape.lineTo(tipWidth / 2, length)
-  shape.lineTo(-tipWidth / 2, length)
-  shape.closePath()
-  const leg = new T.ExtrudeGeometry(shape, { depth: 0.32, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 2 })
-  // Shape lies in XY (x = tangential, y = along axis); extrude along Z (radial after rotation).
-  leg.rotateY(Math.PI / 2) // extrusion now along +X
-  leg.translate(R + 0.02, hingeY, 0)
+  const rings: T.Vector3[][] = []
+  const steps = 10
+  for (let i = 0; i <= steps; i++) {
+    const s = i / steps
+    const width = T.MathUtils.lerp(rootWidth, tipWidth, s)
+    // Thicker near the root and at the foot, thin in the middle.
+    const depth = 0.48 - 0.16 * Math.sin(s * Math.PI) + (s > 0.85 ? (s - 0.85) * 1.2 : 0)
+    rings.push(blisterRing(R - 0.05, hingeY + s * length, width, depth, 22))
+  }
+  const leg = loft(rings)
 
-  // Hinge block at the root.
-  const hinge = box(0.3, 0.32, rootWidth + 0.1, R + 0.15, hingeY + 0.1, 0)
-  // Telescoping strut (two nested tubes) from the octaweb to mid-leg.
-  const strutLen = length * 0.55
-  const strutOuter = cylinder(0.1, 0.1, strutLen * 0.55, 0, 0, 0, 14)
-  const strutInner = cylinder(0.07, 0.07, strutLen * 0.55, 0, 0, 0, 14)
-  strutOuter.translate(0, strutLen * 0.275, 0)
-  strutInner.translate(0, strutLen * 0.7, 0)
-  const strut = merge([strutOuter, strutInner])
-  strut.translate(R + 0.55, hingeY - 0.6, 0)
-  // Foot pad at the tip (folded inward).
-  const foot = cylinder(0.32, 0.36, 0.12, R + 0.2, hingeY + length + 0.06, 0, 20)
+  // Hinge fairing at the root, blending into the octaweb skirt.
+  const hinge = box(0.34, 0.5, rootWidth + 0.14, R + 0.12, hingeY - 0.1, 0)
+  // Telescoping strut from the octaweb up to mid-leg, angled slightly outward.
+  const strutLen = length * 0.52
+  const outer = cylinder(0.11, 0.11, strutLen * 0.55, 0, strutLen * 0.275, 0, 14)
+  const inner = cylinder(0.075, 0.075, strutLen * 0.55, 0, strutLen * 0.7, 0, 14)
+  const strut = merge([outer, inner])
+  strut.rotateZ(-0.03)
+  strut.translate(R + 0.62, hingeY - 0.4, 0)
+  // Foot pad at the tip (folded inward against the tank).
+  const foot = cylinder(0.3, 0.36, 0.14, R + 0.28, hingeY + length + 0.08, 0, 24)
 
   return merge([leg, hinge, strut, foot])
 }
@@ -190,7 +211,10 @@ export function payloadAdapter() {
   return merge([cone, ring])
 }
 
-/** Fairing half (0 → π or π → 2π): boat-tail, cylinder, ogive nose. */
+/**
+ * Fairing half: boat-tail, cylinder, ogive nose. Half 0 faces +Z (toward the
+ * default camera), half 1 faces −Z, so the split line runs along ±X.
+ */
 export function fairingHalf(which: 0 | 1) {
   const { radius: rf, bottom, cylinderTop, top } = FAIRING
   const profile: Profile = [
@@ -207,18 +231,19 @@ export function fairingHalf(which: 0 | 1) {
     const rr = rf * Math.sqrt(1 - Math.pow(s, 1.9)) * (1 - 0.06 * s) + 0.001
     profile.push([rr, cylinderTop + s * L])
   }
-  const g = lathe(profile, 48, which * Math.PI, Math.PI)
-  // Separation-plane flange along the split line so each half reads as a shell.
+  // LatheGeometry: x = r·sin θ, z = r·cos θ, so θ ∈ [−π/2, π/2] is the +Z half.
+  const g = lathe(profile, 48, which === 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI)
+  // Separation-plane flanges along both split edges (at ±X) so each half reads as a shell.
   const lip: T.BufferGeometry[] = []
-  const sign = which === 0 ? 1 : -1
-  for (let i = 0; i < profile.length - 1; i++) {
-    const [r0, y0] = profile[i]
-    const [r1, y1] = profile[i + 1]
-    const seg = cylinder(0.035, 0.035, Math.hypot(r1 - r0, y1 - y0), 0, 0, 0, 6)
-    const mid = ((r0 + r1) / 2) * sign
-    seg.rotateZ(-Math.atan2(y1 - y0, (r1 - r0) * sign) + Math.PI / 2)
-    seg.translate(mid, (y0 + y1) / 2, 0)
-    lip.push(seg)
+  for (const sign of [1, -1]) {
+    for (let i = 0; i < profile.length - 1; i++) {
+      const [r0, y0] = profile[i]
+      const [r1, y1] = profile[i + 1]
+      const seg = cylinder(0.035, 0.035, Math.hypot(r1 - r0, y1 - y0), 0, 0, 0, 6)
+      seg.rotateZ(-Math.atan2(y1 - y0, (r1 - r0) * sign) + Math.PI / 2)
+      seg.translate(((r0 + r1) / 2) * sign, (y0 + y1) / 2, 0)
+      lip.push(seg)
+    }
   }
   return merge([g, ...lip])
 }

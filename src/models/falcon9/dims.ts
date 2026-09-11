@@ -13,7 +13,7 @@ export const D = R * 2
 export const S1 = {
   nozzleBottom: 0,
   nozzleTop: 2.9, // Merlin 1D overall height ≈ 2.92 m
-  octawebBottom: 2.6,
+  octawebBottom: 1.9,
   octawebTop: 4.4,
   rp1Bottom: 4.4,
   rp1Top: 19.6,
@@ -68,14 +68,15 @@ export const MVAC = {
 }
 
 export const GRID_FIN = {
-  y: 40.2,
+  /** Centre height: hinged at the top of the interstage, hanging down when stowed. */
+  y: 47.1,
   width: 1.55,
   height: 1.2,
   thickness: 0.28,
 }
 
 export const LEG = {
-  hingeY: 5.2,
+  hingeY: 2.4,
   length: 11.5,
   rootWidth: 0.9,
   tipWidth: 0.35,

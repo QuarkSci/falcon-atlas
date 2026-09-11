@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { FALCON9 } from '@/data/falcon9'
 import { buildFalcon9 } from '@/models/falcon9'
-import { useAtlas } from '@/store/useAtlas'
+import { useAtlas, type AtlasState, type Lang } from '@/store/useAtlas'
 import { useT } from '@/i18n'
 import { RocketScene, type SceneSnapshot } from './RocketScene'
 
-const snapshot = (s: ReturnType<typeof useAtlas.getState>): SceneSnapshot => ({
+const snapshot = (s: AtlasState): SceneSnapshot => ({
   visible: s.visible,
   selected: s.selected,
   isolate: s.isolate,
@@ -17,6 +17,8 @@ const snapshot = (s: ReturnType<typeof useAtlas.getState>): SceneSnapshot => ({
   inspectorOpen: s.inspectorOpen,
   hovered: s.hovered,
 })
+
+const labelsFor = (lang: Lang) => Object.fromEntries(FALCON9.parts.map((p) => [p.id, p.name[lang]]))
 
 /** Mounts the Three.js scene once and streams store changes into it. */
 export function SceneView() {
@@ -32,6 +34,7 @@ export function SceneView() {
     const { setProgress, setError } = store.getState()
     let scene: RocketScene | null = null
     let cancelled = false
+    let lang = store.getState().lang
 
     // Build geometry on the next frame so the loading state paints first.
     const raf = requestAnimationFrame(() => {
@@ -59,6 +62,7 @@ export function SceneView() {
           },
           store.getState().theme,
         )
+        scene.setLabels(labelsFor(lang))
         scene.setState(snapshot(store.getState()))
         if (import.meta.env.DEV) (window as unknown as { __scene: RocketScene }).__scene = scene
         setProgress(100)
@@ -68,7 +72,14 @@ export function SceneView() {
       }
     })
 
-    const unsubscribe = store.subscribe((s) => scene?.setState(snapshot(s)))
+    const unsubscribe = store.subscribe((s) => {
+      if (!scene) return
+      scene.setState(snapshot(s))
+      if (s.lang !== lang) {
+        lang = s.lang
+        scene.setLabels(labelsFor(lang))
+      }
+    })
     return () => {
       cancelled = true
       cancelAnimationFrame(raf)

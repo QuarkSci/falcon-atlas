@@ -87,3 +87,59 @@ export function onRing(g: T.BufferGeometry, r: number, theta: number) {
   g.rotateY(theta)
   return g
 }
+
+/**
+ * Loft a surface through a series of closed rings (each ring = same number of
+ * points, in order). Ends are capped with triangle fans.
+ */
+export function loft(rings: T.Vector3[][], capStart = true, capEnd = true) {
+  const n = rings[0].length
+  const positions: number[] = []
+  const indices: number[] = []
+  for (const ring of rings) for (const p of ring) positions.push(p.x, p.y, p.z)
+  for (let r = 0; r < rings.length - 1; r++) {
+    for (let i = 0; i < n; i++) {
+      const a = r * n + i,
+        b = r * n + ((i + 1) % n),
+        c = (r + 1) * n + i,
+        d = (r + 1) * n + ((i + 1) % n)
+      indices.push(a, c, b, b, c, d)
+    }
+  }
+  const cap = (ringIndex: number, flip: boolean) => {
+    const centre = new T.Vector3()
+    for (const p of rings[ringIndex]) centre.add(p)
+    centre.divideScalar(n)
+    const ci = positions.length / 3
+    positions.push(centre.x, centre.y, centre.z)
+    for (let i = 0; i < n; i++) {
+      const a = ringIndex * n + i,
+        b = ringIndex * n + ((i + 1) % n)
+      if (flip) indices.push(ci, b, a)
+      else indices.push(ci, a, b)
+    }
+  }
+  if (capStart) cap(0, false)
+  if (capEnd) cap(rings.length - 1, true)
+  const g = new T.BufferGeometry()
+  g.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
+  g.setIndex(indices)
+  g.computeVertexNormals()
+  return g
+}
+
+/**
+ * A closed "blister" cross-section: a half-ellipse bulging toward +X from a
+ * flat chord at x = x0, spanning `width` along Z. Returns `count` points.
+ */
+export function blisterRing(x0: number, y: number, width: number, depth: number, count = 20): T.Vector3[] {
+  const pts: T.Vector3[] = []
+  const arc = count - 2
+  for (let i = 0; i <= arc; i++) {
+    const t = (i / arc) * Math.PI
+    pts.push(new T.Vector3(x0 + Math.sin(t) * depth, y, Math.cos(t) * (width / 2)))
+  }
+  // Close along the flat chord back to the start.
+  pts.push(new T.Vector3(x0, y, 0))
+  return pts
+}
