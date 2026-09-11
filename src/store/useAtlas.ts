@@ -6,6 +6,7 @@ export type Lang = 'en' | 'uz'
 export type Theme = 'dark' | 'light'
 export type View = 'three-quarter' | 'front' | 'side' | 'back'
 export type Panel = 'systems' | 'search' | null
+export type Focus = { kind: 'concept'; id: string } | { kind: 'part'; id: string }
 
 export interface AtlasState {
   lang: Lang
@@ -14,8 +15,8 @@ export interface AtlasState {
   visible: SystemId[]
   /** Selected part ids (a concept may select several). */
   selected: string[]
-  /** Concept id behind the current selection, if any. */
-  chosenConcept: string | null
+  /** What the inspector describes: a concept, a single part, or an assembly. */
+  focus: Focus | null
   isolate: boolean
   explode: number
   view: View
@@ -33,7 +34,7 @@ export interface AtlasState {
   setTheme: (t: Theme) => void
   toggleSystem: (id: SystemId) => void
   showOnly: (ids: SystemId[]) => void
-  selectParts: (ids: string[], concept: string | null) => void
+  selectParts: (ids: string[], focus: Focus | null) => void
   clearSelection: () => void
   setIsolate: (v: boolean) => void
   setExplode: (v: number) => void
@@ -69,7 +70,7 @@ const initialTheme = (): Theme => {
 const sceneDefaults = {
   visible: ALL_SYSTEMS,
   selected: [] as string[],
-  chosenConcept: null as string | null,
+  focus: null as Focus | null,
   isolate: false,
   explode: 0,
   view: 'three-quarter' as View,
@@ -104,13 +105,13 @@ export const useAtlas = create<AtlasState>((set) => ({
     set((s) => ({
       visible: s.visible.includes(id) ? s.visible.filter((x) => x !== id) : [...s.visible, id],
       selected: [],
-      chosenConcept: null,
+      focus: null,
       isolate: false,
       inspectorOpen: false,
     })),
-  showOnly: (ids) => set({ visible: ids, selected: [], chosenConcept: null, isolate: false, inspectorOpen: false }),
-  selectParts: (ids, concept) => set({ selected: ids, chosenConcept: concept, isolate: false, inspectorOpen: ids.length > 0, panel: null, autoRotate: false }),
-  clearSelection: () => set({ selected: [], chosenConcept: null, isolate: false, inspectorOpen: false }),
+  showOnly: (ids) => set({ visible: ids, selected: [], focus: null, isolate: false, inspectorOpen: false }),
+  selectParts: (ids, focus) => set({ selected: ids, focus, isolate: false, inspectorOpen: ids.length > 0, panel: null, autoRotate: false }),
+  clearSelection: () => set({ selected: [], focus: null, isolate: false, inspectorOpen: false }),
   setIsolate: (isolate) => set({ isolate, explode: 0 }),
   setExplode: (explode) => set((s) => ({ explode, autoRotate: false, view: explode > 0.8 ? 'front' : s.view })),
   setView: (view) => set((s) => ({ view, resetTick: s.resetTick + 1, autoRotate: false })),

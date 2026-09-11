@@ -43,6 +43,8 @@ export interface Part {
   stage: StageId
   /** Parent part id for the hierarchy tree (e.g. turbopump → merlin-1). */
   parent?: string
+  /** Assembly with no geometry of its own; selecting it selects its children. */
+  group?: boolean
   /** Same-kind parts share a concept (all 9 Merlins → "merlin-1d"). */
   concept: string
   description: L10n

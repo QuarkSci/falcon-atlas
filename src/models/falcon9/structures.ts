@@ -11,23 +11,38 @@ export function octaweb() {
   const yMid = (S1.octawebTop + S1.octawebBottom) / 2
   const parts: T.BufferGeometry[] = []
 
-  // Outer octagonal skin (thin) and inner octagon.
-  const outer = new T.CylinderGeometry(R - 0.01, R - 0.01, h, 8, 1, true)
+  // Cylindrical engine-section skin (continuous with the tank wall) and the
+  // octagonal frame inside it.
+  const skin = new T.CylinderGeometry(R, R, h, 72, 1, true)
+  skin.translate(0, yMid, 0)
+  parts.push(skin)
+  const outer = new T.CylinderGeometry(R - 0.12, R - 0.12, h - 0.1, 8, 1, true)
   outer.rotateY(Math.PI / 8)
   outer.translate(0, yMid, 0)
   parts.push(outer)
-  const inner = new T.CylinderGeometry(0.62, 0.62, h, 8, 1, true)
+  const inner = new T.CylinderGeometry(0.8, 0.8, h, 8, 1, true)
   inner.rotateY(Math.PI / 8)
   inner.translate(0, yMid, 0)
   parts.push(inner)
 
   // Eight radial webs between the bays.
   for (let i = 0; i < 8; i++) {
-    const web = box(R - 0.62, h, 0.06, (R + 0.62) / 2, yMid, 0)
+    const web = box(R - 0.12 - 0.8, h - 0.1, 0.06, (R - 0.12 + 0.8) / 2, yMid, 0)
     web.rotateY((i / 8) * Math.PI * 2 + Math.PI / 8)
     parts.push(web)
   }
 
+  // Top ring flange that bolts to the tank skirt.
+  const flange = new T.TorusGeometry(R - 0.06, 0.05, 8, 64)
+  flange.rotateX(Math.PI / 2)
+  flange.translate(0, S1.octawebTop, 0)
+  parts.push(flange)
+
+  return merge(parts)
+}
+
+/** Base heat shield: an octagonal plate with nine engine cut-outs. */
+export function heatShield() {
   // Base heat-shield plate: an octagon with nine engine cut-outs.
   const octagon = new T.Shape()
   for (let i = 0; i < 8; i++) {
@@ -51,11 +66,12 @@ export function octaweb() {
   const plate = new T.ExtrudeGeometry(octagon, { depth: 0.08, bevelEnabled: false, curveSegments: 24 })
   plate.rotateX(Math.PI / 2) // shape XY → XZ, extruded along -Y
   plate.translate(0, S1.octawebBottom + 0.08, 0)
-  parts.push(plate)
+  // Collar rings around each cut-out.
+  const parts: T.BufferGeometry[] = [plate]
   const ringAt = (x: number, z: number) => {
-    const ring = new T.TorusGeometry(MERLIN.chamberRadius + 0.1, 0.035, 8, 32)
+    const ring = new T.TorusGeometry(MERLIN.chamberRadius + 0.16, 0.035, 8, 32)
     ring.rotateX(Math.PI / 2)
-    ring.translate(x, S1.octawebBottom, z)
+    ring.translate(x, S1.octawebBottom + 0.08, z)
     parts.push(ring)
   }
   ringAt(0, 0)
@@ -63,13 +79,6 @@ export function octaweb() {
     const a = (i / 8) * Math.PI * 2
     ringAt(Math.cos(a) * MERLIN.ringRadius, Math.sin(a) * MERLIN.ringRadius)
   }
-
-  // Top ring flange that bolts to the tank skirt.
-  const flange = new T.TorusGeometry(R - 0.06, 0.05, 8, 64)
-  flange.rotateX(Math.PI / 2)
-  flange.translate(0, S1.octawebTop, 0)
-  parts.push(flange)
-
   return merge(parts)
 }
 
@@ -180,14 +189,14 @@ export function s2ThrustStructure() {
   const ring = new T.TorusGeometry(0.85, 0.06, 8, 48)
   ring.rotateX(Math.PI / 2)
   ring.translate(0, S2.thrustBottom, 0)
-  // Four pneumatic separation pushers on the rim.
-  const pushers: T.BufferGeometry[] = []
+  // Engine mount ring and four gimbal-actuator brackets.
+  const brackets: T.BufferGeometry[] = []
   for (let i = 0; i < 4; i++) {
-    const p = cylinder(0.08, 0.08, 0.5, R - 0.25, S2.thrustTop - 0.3, 0, 10)
-    p.rotateY((i / 4) * Math.PI * 2 + Math.PI / 4)
-    pushers.push(p)
+    const b = box(0.5, 0.3, 0.18, 1.05, S2.thrustBottom + 0.45, 0)
+    b.rotateY((i / 4) * Math.PI * 2)
+    brackets.push(b)
   }
-  return merge([cone, ring, ...pushers])
+  return merge([cone, ring, ...brackets])
 }
 
 export function s2Rp1Tank() {

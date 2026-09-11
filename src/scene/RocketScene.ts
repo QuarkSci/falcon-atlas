@@ -81,6 +81,8 @@ export class RocketScene {
   private clock = new T.Clock()
   private frame = 0
   private dirty = true
+  /** Extra frames rendered after the last change so compositors always get a settled image. */
+  private settle = 0
   private disposed = false
   private state: SceneSnapshot | null = null
   private last: SceneSnapshot | null = null
@@ -168,6 +170,7 @@ export class RocketScene {
 
     // Part meshes.
     for (const part of rocket.parts) {
+      if (part.group) continue
       const built = model.get(part.id)
       if (!built) {
         console.warn(`No geometry for part ${part.id}`)
@@ -605,7 +608,9 @@ export class RocketScene {
     if (c.autoRotate) this.dirty = true
 
     this.last = s
-    if (this.dirty) {
+    if (this.dirty) this.settle = 3
+    if (this.settle > 0) {
+      this.settle--
       this.renderer.render(this.scene, this.camera)
       this.updateLabels()
       this.dirty = false

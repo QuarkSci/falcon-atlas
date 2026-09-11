@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { FALCON9 } from '@/data/falcon9'
+import { FALCON9, PART_BY_ID } from '@/data/falcon9'
+import { LEAF_PARTS } from '@/data/catalogue'
 import { buildFalcon9 } from '@/models/falcon9'
 import { useAtlas, type AtlasState, type Lang } from '@/store/useAtlas'
 import { useT } from '@/i18n'
@@ -18,7 +19,7 @@ const snapshot = (s: AtlasState): SceneSnapshot => ({
   hovered: s.hovered,
 })
 
-const labelsFor = (lang: Lang) => Object.fromEntries(FALCON9.parts.map((p) => [p.id, p.name[lang]]))
+const labelsFor = (lang: Lang) => Object.fromEntries(LEAF_PARTS.map((p) => [p.id, p.name[lang]]))
 
 /** Mounts the Three.js scene once and streams store changes into it. */
 export function SceneView() {
@@ -54,8 +55,7 @@ export function SceneView() {
                 if (!s.isolate) s.clearSelection()
                 return
               }
-              const part = FALCON9.parts.find((p) => p.id === id)
-              if (part) s.selectParts([id], part.concept)
+              if (PART_BY_ID.has(id)) s.selectParts([id], { kind: 'part', id })
             },
             onHover: (id) => store.getState().setHovered(id),
             onError: (code) => setError(code === 'context-lost' ? tRef.current.contextLost : tRef.current.webgl),

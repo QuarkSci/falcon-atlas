@@ -13,7 +13,7 @@ export const D = R * 2
 export const S1 = {
   nozzleBottom: 0,
   nozzleTop: 2.9, // Merlin 1D overall height ≈ 2.92 m
-  octawebBottom: 1.9,
+  octawebBottom: 1.45,
   octawebTop: 4.4,
   rp1Bottom: 4.4,
   rp1Top: 19.6,
@@ -57,7 +57,12 @@ export const MERLIN = {
   throatRadius: 0.115,
   chamberRadius: 0.24,
   /** Octaweb ring radius for the 8 outer engines. */
-  ringRadius: 1.28,
+  ringRadius: 1.24,
+  /**
+   * Outer engines sit in a pinwheel: each turbopump points mostly tangentially
+   * (plus a little outward) so nine power heads fit inside the 3.66 m skirt.
+   */
+  pinwheel: Math.PI / 2 + 0.35,
 }
 
 export const MVAC = {

@@ -1,20 +1,27 @@
 import { useEffect, useRef } from 'react'
-import { ArrowUpRight, ChevronRight, Focus, TriangleAlert, X } from 'lucide-react'
+import { ArrowUpRight, ChevronRight, CornerLeftUp, Focus, TriangleAlert, X } from 'lucide-react'
 import { CONCEPT_BY_ID, PART_BY_ID, SYSTEM_BY_ID } from '@/data/falcon9'
+import { childrenOf, conceptLeafIds, leafIds, parentOf } from '@/data/catalogue'
+import type { Part } from '@/data/types'
 import { useL, useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
 
 export function Inspector() {
   const t = useT()
   const l = useL()
-  const { selected, chosenConcept, inspectorOpen, isolate, setIsolate, clearSelection, selectParts, setInspectorOpen } = useAtlas()
+  const { selected, focus, inspectorOpen, isolate, setIsolate, clearSelection, selectParts, setInspectorOpen } = useAtlas()
   const title = useRef<HTMLHeadingElement>(null)
-  const parts = selected.map((id) => PART_BY_ID.get(id)).filter((p) => !!p)
-  const part = parts[0]
-  const concept = chosenConcept ? CONCEPT_BY_ID.get(chosenConcept) : undefined
+
+  // Resolve what to describe: a concept (first member as the exemplar) or a part.
+  const concept = focus?.kind === 'concept' ? CONCEPT_BY_ID.get(focus.id) : undefined
+  const part: Part | undefined = focus?.kind === 'part' ? PART_BY_ID.get(focus.id) : concept ? PART_BY_ID.get(concept.parts[0]) : undefined
   const system = part ? SYSTEM_BY_ID.get(part.system) : undefined
   const open = inspectorOpen && !!part
-  const heading = parts.length > 1 && concept ? l(concept.name) : part ? l(part.name) : ''
+  const heading = concept ? l(concept.name) : part ? l(part.name) : ''
+  const parent = part ? parentOf(part.id) : undefined
+  const children = part ? childrenOf(part.id) : []
+  const members = concept ? concept.parts.map((id) => PART_BY_ID.get(id)).filter((p): p is Part => !!p) : []
+  const siblings = part && !concept ? CONCEPT_BY_ID.get(part.concept) : undefined
 
   useEffect(() => {
     if (open) title.current?.focus({ preventScroll: true })
@@ -29,6 +36,8 @@ export function Inspector() {
     return () => window.removeEventListener('keydown', key)
   }, [open, setInspectorOpen])
 
+  const goPart = (p: Part) => selectParts(leafIds(p.id), { kind: 'part', id: p.id })
+
   return (
     <aside className={`inspector glass ${open ? 'open' : ''}`} aria-hidden={!open} aria-label={heading}>
       {part && (
@@ -41,11 +50,16 @@ export function Inspector() {
             <h2 ref={title} tabIndex={-1} className="structure-title" style={{ outline: 'none' }}>
               {heading}
             </h2>
+            {parent && !concept && (
+              <button className="parent-link" onClick={() => goPart(parent)}>
+                <CornerLeftUp size={13} /> {t.partOf} <strong>{l(parent.name)}</strong>
+              </button>
+            )}
             <button className="icon-button" style={{ position: 'absolute', top: 10, right: 8 }} onClick={() => setInspectorOpen(false)} aria-label={t.close}>
               <X size={17} />
             </button>
           </div>
-          <div className="detail-scroll" key={`${chosenConcept}-${part.id}-${isolate}`}>
+          <div className="detail-scroll" key={`${focus?.kind}-${focus?.id}-${isolate}`}>
             <p className="structure-description">{l(part.description)}</p>
             {part.role && (
               <div className="detail-section">
@@ -57,10 +71,10 @@ export function Inspector() {
               <div className="detail-section">
                 <h3>{t.specs}</h3>
                 <dl className="spec-grid">
-                  {part.specs.map((s, i) => (
+                  {part.specs.map((sp, i) => (
                     <div key={i} style={{ display: 'contents' }}>
-                      <dt>{l(s.label)}</dt>
-                      <dd>{s.value}</dd>
+                      <dt>{l(sp.label)}</dt>
+                      <dd>{sp.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -91,30 +105,41 @@ export function Inspector() {
             <div className="structure-meta">
               <span>
                 {t.atlasRef}
-                <strong>{part.id}</strong>
+                <strong>{concept ? concept.id : part.id}</strong>
               </span>
               <span>
                 {t.selectedPieces}
                 <strong>{selected.length}</strong>
               </span>
             </div>
-            {parts.length > 1 && (
+            {children.length > 0 && !concept && (
               <div className="detail-section member-list">
-                <h3>{t.includedParts}</h3>
-                {parts.map((p) => (
-                  <button key={p.id} aria-current={false} onClick={() => selectParts([p.id], p.concept)}>
-                    <span>{l(p.name)}</span>
+                <h3>{t.contains}</h3>
+                {children.map((c) => (
+                  <button key={c.id} onClick={() => goPart(c)}>
+                    <span>{l(c.name)}</span>
                     <ChevronRight size={14} />
                   </button>
                 ))}
               </div>
             )}
-            {parts.length === 1 && concept && concept.parts.length > 1 && (
+            {members.length > 1 && (
               <div className="detail-section member-list">
-                <h3>{l(concept.name)}</h3>
-                <button onClick={() => selectParts(concept.parts, concept.id)}>
+                <h3>{t.includedParts}</h3>
+                {members.map((m) => (
+                  <button key={m.id} onClick={() => goPart(m)}>
+                    <span>{l(m.name)}</span>
+                    <ChevronRight size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {siblings && siblings.parts.length > 1 && (
+              <div className="detail-section member-list">
+                <h3>{l(siblings.name)}</h3>
+                <button onClick={() => selectParts(conceptLeafIds(siblings.id), { kind: 'concept', id: siblings.id })}>
                   <span>
-                    {t.all} · {concept.parts.length} {t.pieces}
+                    {t.all} · {siblings.parts.length} {t.pieces}
                   </span>
                   <ChevronRight size={14} />
                 </button>
@@ -123,9 +148,9 @@ export function Inspector() {
             {part.sources && part.sources.length > 0 && (
               <div className="detail-section">
                 <h3>{t.sources}</h3>
-                {part.sources.map((s) => (
-                  <a key={s.url} className="source-link" href={s.url} target="_blank" rel="noreferrer">
-                    {s.title} <ArrowUpRight size={13} />
+                {part.sources.map((sr) => (
+                  <a key={sr.url} className="source-link" href={sr.url} target="_blank" rel="noreferrer">
+                    {sr.title} <ArrowUpRight size={13} />
                   </a>
                 ))}
               </div>

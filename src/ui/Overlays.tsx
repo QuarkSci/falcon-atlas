@@ -7,10 +7,9 @@ import { useAtlas } from '@/store/useAtlas'
 export function Caption() {
   const t = useT()
   const l = useL()
-  const { isolate, explode, chosenConcept, selected } = useAtlas()
-  const concept = chosenConcept ? CONCEPT_BY_ID.get(chosenConcept) : undefined
-  const part = selected[0] ? PART_BY_ID.get(selected[0]) : undefined
-  const text = isolate ? (selected.length > 1 && concept ? l(concept.name) : part ? l(part.name) : t.captionSelected).toUpperCase() : explode > 0.95 ? t.captionInventory : explode > 0.05 ? t.captionSeparated : t.captionAssembled
+  const { isolate, explode, focus } = useAtlas()
+  const name = focus?.kind === 'concept' ? CONCEPT_BY_ID.get(focus.id)?.name : focus ? PART_BY_ID.get(focus.id)?.name : undefined
+  const text = isolate ? (name ? l(name) : t.captionSelected).toUpperCase() : explode > 0.95 ? t.captionInventory : explode > 0.05 ? t.captionSeparated : t.captionAssembled
   return (
     <div className="scene-caption">
       <span className="caption-line" />
