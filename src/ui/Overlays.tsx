@@ -37,6 +37,7 @@ export function Footer() {
           </>
         )}
       </span>
+      <span className="studio-credit">MuhammadYusuf | Claude</span>
       <button onClick={() => setAboutOpen(true)}>
         {t.credits} <ArrowUpRight size={12} />
       </button>

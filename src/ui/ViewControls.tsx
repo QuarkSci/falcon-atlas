@@ -1,7 +1,8 @@
-import { Pause, RotateCcw, RotateCw, Slice } from 'lucide-react'
+import { Compass, Pause, RotateCcw, RotateCw, Slice } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { useT } from '@/i18n'
 import { useAtlas, type View } from '@/store/useAtlas'
+import { useDraggable } from './useDraggable'
 
 const VIEWS: { id: View; glyph: string }[] = [
   { id: 'three-quarter', glyph: '¾' },
@@ -10,11 +11,26 @@ const VIEWS: { id: View; glyph: string }[] = [
   { id: 'back', glyph: 'B' },
 ]
 
+/** Icon-only symbol on the right edge; opens the camera view controls. */
+export function ViewControlsToggle() {
+  const t = useT()
+  const { viewControlsOpen, setViewControlsOpen } = useAtlas()
+  return (
+    <nav className="side-rail side-rail-right glass" aria-label={t.viewControls}>
+      <button className={viewControlsOpen ? 'active' : ''} onClick={() => setViewControlsOpen(!viewControlsOpen)} aria-pressed={viewControlsOpen} aria-label={t.viewControls} title={t.viewControls}>
+        <Compass size={18} />
+      </button>
+    </nav>
+  )
+}
+
 export function ViewControls() {
   const t = useT()
-  const { view, setView, explode, autoRotate, setAutoRotate, isolate, cutaway, setCutaway, reset } = useAtlas()
+  const { view, setView, explode, autoRotate, setAutoRotate, isolate, cutaway, setCutaway, viewControlsOpen, reset } = useAtlas()
+  const { panelRef, style, handleProps } = useDraggable()
   return (
-    <nav className="view-controls glass" aria-label="Camera controls">
+    <nav ref={panelRef as React.RefObject<HTMLElement>} style={style} className={`view-controls glass floating-panel ${viewControlsOpen ? 'open' : ''}`} aria-label={t.viewControls} aria-hidden={!viewControlsOpen}>
+      <div className="drag-handle" {...handleProps} />
       {VIEWS.map((v) => (
         <button key={v.id} className={view === v.id ? 'active' : ''} aria-pressed={view === v.id} disabled={explode > 0.8 && v.id !== 'front'} onClick={() => setView(v.id)} title={t.views[v.id]} aria-label={t.views[v.id]}>
           <span>{v.glyph}</span>
@@ -38,8 +54,10 @@ export function ViewControls() {
 export function CutawayPanel() {
   const t = useT()
   const { cutawayAngle, setCutawayAngle } = useAtlas()
+  const { panelRef, style, handleProps } = useDraggable()
   return (
-    <section className="cutaway-panel glass" aria-label={t.cutaway}>
+    <section ref={panelRef as React.RefObject<HTMLElement>} style={style} className="cutaway-panel glass floating-panel open" aria-label={t.cutaway}>
+      <div className="drag-handle drag-handle-h" {...handleProps} />
       <div className="cutaway-label">
         <Slice size={14} />
         <span>{t.cutawayAngleLabel}</span>

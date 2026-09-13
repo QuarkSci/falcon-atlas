@@ -283,6 +283,12 @@ export class RocketScene {
     el.addEventListener('pointercancel', this.onCancel)
     el.addEventListener('pointerleave', this.onLeave)
     el.addEventListener('webglcontextlost', this.onContextLost)
+    // Attached to the host (the canvas's parent), not the canvas itself:
+    // OrbitControls' own wheel listener lives on the canvas, and a listener
+    // on the same target fires in registration order regardless of the
+    // capture flag. A true ancestor genuinely sees the event first during
+    // the capture phase, letting us stop it before OrbitControls ever does.
+    this.host.addEventListener('wheel', this.onWheel, { capture: true, passive: false })
 
     this.animate()
   }
@@ -310,6 +316,7 @@ export class RocketScene {
     el.removeEventListener('pointercancel', this.onCancel)
     el.removeEventListener('pointerleave', this.onLeave)
     el.removeEventListener('webglcontextlost', this.onContextLost)
+    this.host.removeEventListener('wheel', this.onWheel, { capture: true })
     this.controls.dispose()
     this.scene.traverse((o) => {
       if (o instanceof T.Mesh || o instanceof T.Points || o instanceof T.LineSegments) {
@@ -616,6 +623,45 @@ export class RocketScene {
   private onContextLost = (e: Event) => {
     e.preventDefault()
     this.cb.onError('context-lost')
+  }
+
+  /**
+   * Trackpads send plain two-finger scrolling and pinch-to-zoom as the same
+   * DOM `wheel` event, distinguished only by `ctrlKey` (which the browser
+   * sets synthetically for a pinch gesture). OrbitControls treats every
+   * wheel event as zoom, which is why a plain scroll — meant to pan down to
+   * the rest of the vehicle — instead just zoomed in and out. This handler
+   * runs in the capture phase so it sees the event before OrbitControls'
+   * own bubble-phase listener does, and stops it there.
+   */
+  private onWheel = (e: WheelEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const c = this.controls
+    if (e.ctrlKey) {
+      // Pinch: dolly toward/away from the current target.
+      const offset = this.camera.position.clone().sub(c.target)
+      const scale = Math.pow(0.985, -e.deltaY)
+      const dist = T.MathUtils.clamp(offset.length() * scale, c.minDistance, c.maxDistance)
+      offset.setLength(dist)
+      this.camera.position.copy(c.target).add(offset)
+    } else {
+      // Plain scroll: pan across the view plane, screen-space proportional
+      // like OrbitControls' own drag-to-pan.
+      const offset = this.camera.position.clone().sub(c.target)
+      const targetDistance = offset.length() * Math.tan(T.MathUtils.degToRad(this.camera.fov / 2))
+      const panX = new T.Vector3().setFromMatrixColumn(this.camera.matrix, 0)
+      const panY = new T.Vector3().setFromMatrixColumn(this.camera.matrix, 1)
+      const h = this.host.clientHeight || 1
+      panX.multiplyScalar((-e.deltaX * 2 * targetDistance) / h)
+      panY.multiplyScalar((e.deltaY * 2 * targetDistance) / h)
+      const pan = panX.add(panY)
+      this.camera.position.add(pan)
+      c.target.add(pan)
+    }
+    c.update()
+    this.fly = null
+    this.dirty = true
   }
 
   private pick(x: number, y: number): string | null {

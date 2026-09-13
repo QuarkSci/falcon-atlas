@@ -8,7 +8,7 @@ import { FlightToggle } from '@/ui/Flight'
 export function Identity() {
   const t = useT()
   return (
-    <header className="identity">
+    <header className="identity glass">
       <div className="eyebrow">
         <span className="status-dot" /> {t.eyebrow}
       </div>
@@ -29,7 +29,7 @@ export function TopActions() {
   const t = useT()
   const { panel, setPanel, lang, setLang, theme, setTheme, setAboutOpen } = useAtlas()
   return (
-    <nav className="top-actions" aria-label="Explorer panels">
+    <nav className="top-actions glass" aria-label="Explorer panels">
       <button className={`search-trigger ${panel === 'search' ? 'active' : ''}`} onClick={() => setPanel('search')} aria-label={t.findPart}>
         <Search size={17} />
         <span>{t.findPart}</span>

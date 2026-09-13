@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
-import { Layers3 } from 'lucide-react'
 import { SceneView } from '@/scene/SceneView'
 import { useAtlas } from '@/store/useAtlas'
 import { useT } from '@/i18n'
 import { Identity, TopActions } from '@/ui/Header'
+import { SideRail } from '@/ui/SideRail'
 import { SystemsPanel } from '@/ui/SystemsPanel'
 import { SearchPanel } from '@/ui/SearchPanel'
-import { CutawayPanel, ViewControls } from '@/ui/ViewControls'
+import { CutawayPanel, ViewControls, ViewControlsToggle } from '@/ui/ViewControls'
+import { ExplodeDock } from '@/ui/Explode'
 import { Inspector } from '@/ui/Inspector'
 import { About } from '@/ui/About'
 import { Caption, Footer, HoverLabel, Loading } from '@/ui/Overlays'
@@ -14,7 +15,8 @@ import { FlightDock } from '@/ui/Flight'
 
 export default function App() {
   const t = useT()
-  const { theme, lang, panel, setPanel, cutaway, flight } = useAtlas()
+  const { theme, lang, panel, setPanel, cutaway, flight, explodeOpen } = useAtlas()
+  const dockOpen = flight || explodeOpen
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -44,23 +46,15 @@ export default function App() {
       <div className="vignette" />
       <Identity />
       <TopActions />
+      <SideRail />
       <SystemsPanel />
       {panel === 'search' && <SearchPanel />}
+      <ViewControlsToggle />
       <ViewControls />
       {cutaway && <CutawayPanel />}
       <Caption />
-      <div className={`bottom-dock glass ${flight ? 'flight' : ''}`}>
-        {flight ? (
-          <FlightDock />
-        ) : (
-          <>
-            <button className="mobile-only dock-reset" onClick={() => setPanel('systems')} aria-label={t.systems}>
-              <Layers3 size={19} />
-              <span>{t.systems}</span>
-            </button>
-            <ExplodeDock />
-          </>
-        )}
+      <div className={`bottom-dock glass floating-panel ${dockOpen ? 'open' : ''} ${flight ? 'flight' : ''}`} aria-hidden={!dockOpen}>
+        {flight ? <FlightDock /> : <ExplodeDock />}
       </div>
       <Footer />
       <HoverLabel />
@@ -68,35 +62,5 @@ export default function App() {
       <Inspector />
       <About />
     </main>
-  )
-}
-
-import { RotateCcw } from 'lucide-react'
-import { Slider } from '@/components/ui/slider'
-
-function ExplodeDock() {
-  const t = useT()
-  const { explode, setExplode, reset } = useAtlas()
-  return (
-    <>
-      <div className="explode-control">
-        <div className="explode-label">
-          <label id="explode-label">{t.explode}</label>
-          <output>
-            {Math.round(explode * 100)}
-            <span>%</span>
-          </output>
-        </div>
-        <Slider aria-labelledby="explode-label" min={0} max={100} step={1} value={[explode * 100]} onValueChange={(v) => setExplode((Array.isArray(v) ? v[0] : v) / 100)} />
-        <div className="slider-endpoints">
-          <span>{t.assembled}</span>
-          <span>{t.everyPiece}</span>
-        </div>
-      </div>
-      <button className="dock-reset" onClick={reset} aria-label={t.reset}>
-        <RotateCcw size={17} />
-        <span>{t.reset}</span>
-      </button>
-    </>
   )
 }

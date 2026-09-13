@@ -6,6 +6,7 @@ import { totalThrust } from '@/scene/flight'
 import { FlightAudio } from '@/scene/audio'
 import { useL, useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
+import { useDraggable } from './useDraggable'
 
 /** Seconds for a full liftoff-to-payload playthrough at 1× speed. */
 const DURATION_S = 26
@@ -61,6 +62,7 @@ export function FlightDock() {
   const t = useT()
   const l = useL()
   const { flightTime, flightPlaying, setFlightTime, setFlightPlaying, setFlight } = useAtlas()
+  const { panelRef, style, handleProps } = useDraggable()
   useFlightPlayback()
 
   const active = [...FLIGHT_MILESTONES].reverse().find((m) => m.t <= flightTime + 1e-6) ?? FLIGHT_MILESTONES[0]
@@ -76,7 +78,8 @@ export function FlightDock() {
   }
 
   return (
-    <>
+    <div ref={panelRef as React.RefObject<HTMLDivElement>} style={style} className="dock-inner">
+      <div className="drag-handle" {...handleProps} />
       <button className="dock-reset" onClick={togglePlay} aria-label={flightPlaying ? t.pause : atEnd ? t.restart : t.play}>
         {flightPlaying ? <Pause size={19} /> : atEnd ? <RotateCcw size={19} /> : <Play size={19} />}
         <span>{flightPlaying ? t.pause : atEnd ? t.restart : t.play}</span>
@@ -98,6 +101,6 @@ export function FlightDock() {
       <button className="icon-button" onClick={() => setFlight(false)} aria-label={t.exitFlight} title={t.exitFlight}>
         <X size={18} />
       </button>
-    </>
+    </div>
   )
 }
