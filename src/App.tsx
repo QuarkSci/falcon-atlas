@@ -6,14 +6,14 @@ import { useT } from '@/i18n'
 import { Identity, TopActions } from '@/ui/Header'
 import { SystemsPanel } from '@/ui/SystemsPanel'
 import { SearchPanel } from '@/ui/SearchPanel'
-import { ViewControls } from '@/ui/ViewControls'
+import { CutawayPanel, ViewControls } from '@/ui/ViewControls'
 import { Inspector } from '@/ui/Inspector'
 import { About } from '@/ui/About'
 import { Caption, Footer, HoverLabel, Loading } from '@/ui/Overlays'
 
 export default function App() {
   const t = useT()
-  const { theme, lang, panel, setPanel } = useAtlas()
+  const { theme, lang, panel, setPanel, cutaway } = useAtlas()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -46,6 +46,7 @@ export default function App() {
       <SystemsPanel />
       {panel === 'search' && <SearchPanel />}
       <ViewControls />
+      {cutaway && <CutawayPanel />}
       <Caption />
       <div className="bottom-dock glass">
         <button className="mobile-only dock-reset" onClick={() => setPanel('systems')} aria-label={t.systems}>

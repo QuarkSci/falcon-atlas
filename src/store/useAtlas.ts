@@ -21,6 +21,10 @@ export interface AtlasState {
   explode: number
   view: View
   autoRotate: boolean
+  /** Whether a vertical wedge is clipped away to reveal interiors. */
+  cutaway: boolean
+  /** Azimuth of the cut, in degrees around the vehicle's axis. */
+  cutawayAngle: number
   /** Bumped to force a camera re-fit. */
   resetTick: number
   panel: Panel
@@ -40,6 +44,8 @@ export interface AtlasState {
   setExplode: (v: number) => void
   setView: (v: View) => void
   setAutoRotate: (v: boolean) => void
+  setCutaway: (v: boolean) => void
+  setCutawayAngle: (deg: number) => void
   setPanel: (p: Panel) => void
   setInspectorOpen: (v: boolean) => void
   setAboutOpen: (v: boolean) => void
@@ -75,6 +81,8 @@ const sceneDefaults = {
   explode: 0,
   view: 'three-quarter' as View,
   autoRotate: false,
+  cutaway: false,
+  cutawayAngle: 200,
   panel: null as Panel,
   inspectorOpen: false,
   hovered: null as string | null,
@@ -116,6 +124,8 @@ export const useAtlas = create<AtlasState>((set) => ({
   setExplode: (explode) => set((s) => ({ explode, autoRotate: false, view: explode > 0.8 ? 'front' : s.view })),
   setView: (view) => set((s) => ({ view, resetTick: s.resetTick + 1, autoRotate: false })),
   setAutoRotate: (autoRotate) => set({ autoRotate }),
+  setCutaway: (cutaway) => set({ cutaway, autoRotate: false }),
+  setCutawayAngle: (cutawayAngle) => set({ cutawayAngle }),
   setPanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel, inspectorOpen: panel ? false : s.inspectorOpen })),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setAboutOpen: (aboutOpen) => set({ aboutOpen, panel: null, inspectorOpen: false }),

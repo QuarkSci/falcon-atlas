@@ -10,7 +10,10 @@ interface Preset {
 }
 
 const PRESETS: Record<MaterialKey, Preset> = {
-  'paint-white': { color: '#e9ebee', metalness: 0.05, roughness: 0.42, clearcoat: 0.25 },
+  // clearcoat stays at 0 everywhere: three.js's clearcoat pass on
+  // MeshPhysicalMaterial does not respect clippingPlanes, which silently
+  // broke the cutaway view on every glossy-painted part.
+  'paint-white': { color: '#e9ebee', metalness: 0.05, roughness: 0.42 },
   'paint-grey': { color: '#9ea4ad', metalness: 0.08, roughness: 0.5 },
   'composite-black': { color: '#1c1f24', metalness: 0.15, roughness: 0.55 },
   soot: { color: '#3b3f46', metalness: 0.3, roughness: 0.7 },

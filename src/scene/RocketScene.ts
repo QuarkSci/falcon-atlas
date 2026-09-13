@@ -16,6 +16,8 @@ export interface SceneSnapshot {
   explode: number
   view: View
   autoRotate: boolean
+  cutaway: boolean
+  cutawayAngle: number
   resetTick: number
   theme: Theme
   inspectorOpen: boolean
@@ -99,6 +101,11 @@ export class RocketScene {
   private fly: { pos: T.Vector3; target: T.Vector3; t: number } | null = null
   private isolateKey = ''
   private layoutKey = ''
+  /** Shared clip plane for the cutaway view; pushed far away (constant) to disable. */
+  private clipPlane = new T.Plane(new T.Vector3(1, 0, 0), 1e4)
+  private clipIndicator: T.Group
+  /** Shared matte material for cut interiors, so a slice reads clearly as "hollow" rather than showing the same glossy exterior mirrored inward. */
+  private interiorMaterial: T.MeshStandardMaterial
   private labelLayer: HTMLDivElement
   /** Smoothed explode amount that chases the store value. */
   private amount = 0
@@ -114,6 +121,7 @@ export class RocketScene {
     r.outputColorSpace = T.SRGBColorSpace
     r.toneMapping = T.ACESFilmicToneMapping
     r.toneMappingExposure = 1.05
+    r.localClippingEnabled = true
     r.domElement.setAttribute('aria-label', 'Interactive Falcon 9. Drag to orbit, scroll to zoom, tap a part to inspect it.')
     host.appendChild(r.domElement)
 
@@ -174,6 +182,23 @@ export class RocketScene {
     this.stars = this.makeStars()
     this.scene.add(this.stars)
 
+    // A closed shell's exterior material is DoubleSide (thin/open parts like
+    // grid fins need to be seen from both sides even without cutting), so
+    // its own backface would otherwise render at the exact same depth as
+    // this interior cap and win the depth test at random (z-fighting). The
+    // polygon offset nudges the cap fractionally closer to the camera so it
+    // always wins, with no visible positional shift.
+    this.interiorMaterial = new T.MeshStandardMaterial({
+      color: '#2e3238',
+      roughness: 0.95,
+      metalness: 0.05,
+      side: T.BackSide,
+      clippingPlanes: [this.clipPlane],
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -4,
+    })
+
     // Part meshes.
     for (const part of rocket.parts) {
       if (part.group) continue
@@ -183,8 +208,14 @@ export class RocketScene {
         continue
       }
       const material = createPartMaterial(built.material, theme)
+      material.clippingPlanes = [this.clipPlane]
       const mesh = new T.Mesh(built.geometry, material)
       mesh.name = part.id
+      // A back-facing child sharing the same geometry: invisible normally
+      // (front and back faces coincide), it only becomes visible where the
+      // clip plane has sliced the shell open, giving the cavity a matte
+      // "cut material" look instead of a mirrored copy of the exterior.
+      mesh.add(new T.Mesh(built.geometry, this.interiorMaterial))
       const bounds = built.geometry.boundingBox!.clone()
       const centre = bounds.getCenter(new T.Vector3())
       const label = document.createElement('div')
@@ -209,6 +240,9 @@ export class RocketScene {
       this.byId.set(part.id, entry)
       this.scene.add(mesh)
     }
+
+    this.clipIndicator = this.makeClipIndicator()
+    this.scene.add(this.clipIndicator)
 
     this.applyTheme(theme)
 
@@ -252,7 +286,7 @@ export class RocketScene {
     el.removeEventListener('webglcontextlost', this.onContextLost)
     this.controls.dispose()
     this.scene.traverse((o) => {
-      if (o instanceof T.Mesh || o instanceof T.Points) {
+      if (o instanceof T.Mesh || o instanceof T.Points || o instanceof T.LineSegments) {
         o.geometry.dispose()
         const ms = Array.isArray(o.material) ? o.material : [o.material]
         ms.forEach((m) => m.dispose())
@@ -287,6 +321,32 @@ export class RocketScene {
     const p = new T.Points(g, m)
     p.frustumCulled = false
     return p
+  }
+
+  /**
+   * A faint quad marking the cutaway plane, plus a bright edge — the plane
+   * itself has no visible thickness, so without this the "missing" half of
+   * the rocket would give no sense of where the cut actually is. Oriented at
+   * rotation.y = 0 for a plane whose normal is +Z; the frame loop rotates the
+   * whole group to match the clip plane's current angle.
+   */
+  private makeClipIndicator() {
+    const group = new T.Group()
+    const height = this.rocket.height + 6
+    const width = Math.max(30, this.rocket.diameter * 5)
+    const fill = new T.Mesh(
+      new T.PlaneGeometry(width, height),
+      new T.MeshBasicMaterial({ color: 0x3ed2c0, transparent: true, opacity: 0.05, side: T.DoubleSide, depthWrite: false }),
+    )
+    fill.position.y = this.rocket.height / 2
+    group.add(fill)
+    const edges = new T.EdgesGeometry(new T.PlaneGeometry(width, height))
+    const line = new T.LineSegments(edges, new T.LineBasicMaterial({ color: 0x3ed2c0, transparent: true, opacity: 0.35 }))
+    line.position.y = this.rocket.height / 2
+    group.add(line)
+    group.visible = false
+    group.renderOrder = 5
+    return group
   }
 
   private applyTheme(theme: Theme) {
@@ -579,6 +639,28 @@ export class RocketScene {
     const first = last === null
 
     if (last?.theme !== s.theme) this.applyTheme(s.theme)
+
+    // Cutaway plane: rotate to the chosen azimuth, or push it far away to
+    // disable clipping entirely (cheaper than toggling clippingPlanes on
+    // every material).
+    if (first || last.cutaway !== s.cutaway || last.cutawayAngle !== s.cutawayAngle) {
+      if (s.cutaway) {
+        const rad = T.MathUtils.degToRad(s.cutawayAngle)
+        // Negated: we want to remove the near (camera-facing) half so the
+        // cut reveals the interior toward the viewer, not the far side.
+        this.clipPlane.normal.set(-Math.cos(rad), 0, -Math.sin(rad))
+        this.clipPlane.constant = 0
+        this.clipIndicator.rotation.y = Math.PI / 2 - rad
+      } else {
+        this.clipPlane.constant = 1e4
+      }
+      this.dirty = true
+    }
+    const showIndicator = s.cutaway && !s.isolate
+    if (this.clipIndicator.visible !== showIndicator) {
+      this.clipIndicator.visible = showIndicator
+      this.dirty = true
+    }
 
     // Explode amount chases the slider.
     const moving = Math.abs(this.amount - s.explode) > 0.0005
