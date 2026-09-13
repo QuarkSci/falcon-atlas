@@ -26,6 +26,7 @@ const PRESETS: Record<MaterialKey, Preset> = {
 
 export const HIGHLIGHT = new T.Color('#3ed2c0')
 export const HOVER = new T.Color('#7fb4ff')
+export const GLOW = new T.Color('#ff9a4d')
 
 export interface PartMaterial extends T.MeshPhysicalMaterial {
   userData: { key: MaterialKey; base: T.Color }
@@ -48,7 +49,7 @@ export function createPartMaterial(key: MaterialKey, theme: Theme): PartMaterial
 }
 
 /** Tint a material toward the selection / hover colours without losing its base. */
-export function tint(m: PartMaterial, selected: number, hovered: number) {
+export function tint(m: PartMaterial, selected: number, hovered: number, powered = 0) {
   const base = m.userData.base
   m.color.copy(base)
   if (selected > 0) m.color.lerp(HIGHLIGHT, selected * 0.72)
@@ -56,6 +57,13 @@ export function tint(m: PartMaterial, selected: number, hovered: number) {
   m.emissive.set(0x000000)
   if (selected > 0) m.emissive.copy(HIGHLIGHT).multiplyScalar(0.12 * selected)
   else if (hovered > 0) m.emissive.copy(HOVER).multiplyScalar(0.06 * hovered)
+  // Engine-firing glow during the flight sequence, additive so it still reads
+  // through a hover or selection tint.
+  if (powered > 0) {
+    m.emissive.r += GLOW.r * 0.8 * powered
+    m.emissive.g += GLOW.g * 0.8 * powered
+    m.emissive.b += GLOW.b * 0.8 * powered
+  }
 }
 
 export function retheme(m: PartMaterial, theme: Theme) {

@@ -25,6 +25,12 @@ export interface AtlasState {
   cutaway: boolean
   /** Azimuth of the cut, in degrees around the vehicle's axis. */
   cutawayAngle: number
+  /** Whether the flight-sequence timeline is active (mutually exclusive with explode/isolate/cutaway). */
+  flight: boolean
+  /** Normalized position along the flight timeline, 0 (liftoff) to 1 (payload deployed). */
+  flightTime: number
+  /** Whether the timeline is auto-advancing. */
+  flightPlaying: boolean
   /** Bumped to force a camera re-fit. */
   resetTick: number
   panel: Panel
@@ -46,6 +52,9 @@ export interface AtlasState {
   setAutoRotate: (v: boolean) => void
   setCutaway: (v: boolean) => void
   setCutawayAngle: (deg: number) => void
+  setFlight: (v: boolean) => void
+  setFlightTime: (t: number) => void
+  setFlightPlaying: (v: boolean) => void
   setPanel: (p: Panel) => void
   setInspectorOpen: (v: boolean) => void
   setAboutOpen: (v: boolean) => void
@@ -83,6 +92,9 @@ const sceneDefaults = {
   autoRotate: false,
   cutaway: false,
   cutawayAngle: 200,
+  flight: false,
+  flightTime: 0,
+  flightPlaying: false,
   panel: null as Panel,
   inspectorOpen: false,
   hovered: null as string | null,
@@ -118,14 +130,22 @@ export const useAtlas = create<AtlasState>((set) => ({
       inspectorOpen: false,
     })),
   showOnly: (ids) => set({ visible: ids, selected: [], focus: null, isolate: false, inspectorOpen: false }),
-  selectParts: (ids, focus) => set({ selected: ids, focus, isolate: false, inspectorOpen: ids.length > 0, panel: null, autoRotate: false }),
+  selectParts: (ids, focus) => set({ selected: ids, focus, isolate: false, inspectorOpen: ids.length > 0, panel: null, autoRotate: false, flight: false, flightPlaying: false }),
   clearSelection: () => set({ selected: [], focus: null, isolate: false, inspectorOpen: false }),
-  setIsolate: (isolate) => set({ isolate, explode: 0 }),
-  setExplode: (explode) => set((s) => ({ explode, autoRotate: false, view: explode > 0.8 ? 'front' : s.view })),
+  setIsolate: (isolate) => set({ isolate, explode: 0, flight: false, flightPlaying: false }),
+  setExplode: (explode) => set((s) => ({ explode, autoRotate: false, view: explode > 0.8 ? 'front' : s.view, flight: false, flightPlaying: false })),
   setView: (view) => set((s) => ({ view, resetTick: s.resetTick + 1, autoRotate: false })),
   setAutoRotate: (autoRotate) => set({ autoRotate }),
-  setCutaway: (cutaway) => set({ cutaway, autoRotate: false }),
+  setCutaway: (cutaway) => set((s) => ({ cutaway, autoRotate: false, flight: cutaway ? false : s.flight, flightPlaying: cutaway ? false : s.flightPlaying })),
   setCutawayAngle: (cutawayAngle) => set({ cutawayAngle }),
+  setFlight: (flight) =>
+    set((s) =>
+      flight
+        ? { flight: true, flightTime: 0, flightPlaying: false, explode: 0, isolate: false, cutaway: false, selected: [], focus: null, panel: null, inspectorOpen: false, autoRotate: false, view: 'three-quarter', visible: ALL_SYSTEMS }
+        : { flight: false, flightPlaying: false, resetTick: s.resetTick + 1 },
+    ),
+  setFlightTime: (flightTime) => set({ flightTime: Math.max(0, Math.min(1, flightTime)), flightPlaying: false }),
+  setFlightPlaying: (flightPlaying) => set((s) => ({ flightPlaying, flightTime: flightPlaying && s.flightTime >= 1 ? 0 : s.flightTime })),
   setPanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel, inspectorOpen: panel ? false : s.inspectorOpen })),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setAboutOpen: (aboutOpen) => set({ aboutOpen, panel: null, inspectorOpen: false }),

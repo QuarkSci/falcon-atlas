@@ -15,6 +15,8 @@ const snapshot = (s: AtlasState): SceneSnapshot => ({
   autoRotate: s.autoRotate,
   cutaway: s.cutaway,
   cutawayAngle: s.cutawayAngle,
+  flight: s.flight,
+  flightTime: s.flightTime,
   resetTick: s.resetTick,
   theme: s.theme,
   inspectorOpen: s.inspectorOpen,

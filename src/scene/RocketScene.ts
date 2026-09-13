@@ -5,6 +5,7 @@ import type { Part, Rocket, SystemId } from '@/data/types'
 import type { BuiltModel } from '@/models/types'
 import type { Theme, View } from '@/store/useAtlas'
 import { inventoryLayout, separationVector } from './explode'
+import { flightPose, type FlightPose } from './flight'
 import { createGround, rethemeGround } from './ground'
 import { createPartMaterial, retheme, tint, type PartMaterial } from './materials'
 import { PointerTap } from './PointerTap'
@@ -18,6 +19,8 @@ export interface SceneSnapshot {
   autoRotate: boolean
   cutaway: boolean
   cutawayAngle: number
+  flight: boolean
+  flightTime: number
   resetTick: number
   theme: Theme
   inspectorOpen: boolean
@@ -46,6 +49,9 @@ interface PartEntry {
   cellWidth: number
   selectedAmount: number
   hoverAmount: number
+  poweredAmount: number
+  /** Scratch object reused every frame by the flight-sequence pose computation. */
+  flight: FlightPose
   label: HTMLDivElement
 }
 
@@ -234,6 +240,8 @@ export class RocketScene {
         cellWidth: 0,
         selectedAmount: 0,
         hoverAmount: 0,
+        poweredAmount: 0,
+        flight: { offset: new T.Vector3(), quaternion: new T.Quaternion(), powered: 0 },
         label,
       }
       this.parts.push(entry)
@@ -498,8 +506,13 @@ export class RocketScene {
     return box
   }
 
-  /** Choose the framing for the current mode: assembled, exploded or isolated. */
+  /** Choose the framing for the current mode: assembled, exploded, isolated or flying. */
   private frameFor(s: SceneSnapshot, animate: boolean) {
+    if (s.flight) {
+      const box = this.visibleBox()
+      if (!box.isEmpty()) this.fitBox(box, 'three-quarter', this.insets(), animate, 1.12)
+      return
+    }
     if (s.isolate) {
       const box = this.visibleBox()
       if (!box.isEmpty()) this.fitBox(box, s.view, this.insets(), animate, 1.3)
@@ -543,6 +556,16 @@ export class RocketScene {
         const t = smooth((a - SPLIT) / (1 - SPLIT))
         pos.copy(p.separation).lerp(p.inventory, t)
       }
+      p.mesh.quaternion.identity()
+    }
+  }
+
+  /** Pose every part along the scripted flight sequence at time `t`. */
+  private applyFlight(t: number) {
+    for (const p of this.parts) {
+      flightPose(p.part, p.centre, t, p.flight)
+      p.mesh.position.copy(p.flight.offset)
+      p.mesh.quaternion.copy(p.flight.quaternion)
     }
   }
 
@@ -662,8 +685,8 @@ export class RocketScene {
       this.dirty = true
     }
 
-    // Explode amount chases the slider.
-    const moving = Math.abs(this.amount - s.explode) > 0.0005
+    // Explode amount chases the slider (irrelevant while the flight sequence drives poses).
+    const moving = !s.flight && Math.abs(this.amount - s.explode) > 0.0005
     if (moving) {
       this.amount = T.MathUtils.damp(this.amount, s.explode, 9, dt)
       if (Math.abs(this.amount - s.explode) < 0.0005) this.amount = s.explode
@@ -677,11 +700,17 @@ export class RocketScene {
       for (const p of this.parts) p.mesh.visible = s.isolate ? selection.has(p.id) : visibleSet.has(p.system) || selection.has(p.id)
       this.dirty = true
     }
-    const showPad = !s.isolate && this.amount < 0.45
+    const showPad = !s.isolate && !s.flight && this.amount < 0.45
     this.ground.visible = this.platform.visible = this.padRing.visible = this.padRingInner.visible = showPad
 
     // Offsets.
-    if (moving || visibilityChanged) {
+    const flightTimeChanged = s.flight && (first || last.flight !== s.flight || last.flightTime !== s.flightTime)
+    if (s.flight) {
+      if (flightTimeChanged) {
+        this.applyFlight(s.flightTime)
+        this.dirty = true
+      }
+    } else if (moving || visibilityChanged || (last?.flight && !s.flight)) {
       this.updateLayout(this.parts.filter((p) => p.mesh.visible))
       this.applyOffsets()
       this.dirty = true
@@ -691,7 +720,9 @@ export class RocketScene {
     const viewChanged = first || last.resetTick !== s.resetTick || last.view !== s.view
     const isolateKey = s.isolate ? `${s.selected.join(',')}:${s.inspectorOpen}` : ''
     const isolateChanged = isolateKey !== this.isolateKey
-    if (viewChanged || isolateChanged) {
+    if (s.flight) {
+      if (flightTimeChanged) this.frameFor(s, false)
+    } else if (viewChanged || isolateChanged) {
       this.frameFor(s, !first)
       this.isolateKey = isolateKey
       this.lastFitAmount = this.amount
@@ -720,14 +751,17 @@ export class RocketScene {
       this.pendingHover = null
     }
 
-    // Smooth highlight amounts.
+    // Smooth highlight amounts (engine glow is already a smooth function of
+    // flight time, so it needs no damping of its own — just picking it up).
     for (const p of this.parts) {
       const targetSel = selection.has(p.id) ? 1 : 0
       const targetHov = p.id === this.hoveredId ? 1 : 0
-      if (Math.abs(p.selectedAmount - targetSel) > 0.002 || Math.abs(p.hoverAmount - targetHov) > 0.002) {
+      const targetPow = s.flight ? p.flight.powered : 0
+      if (Math.abs(p.selectedAmount - targetSel) > 0.002 || Math.abs(p.hoverAmount - targetHov) > 0.002 || Math.abs(p.poweredAmount - targetPow) > 0.002) {
         p.selectedAmount = T.MathUtils.damp(p.selectedAmount, targetSel, 14, dt)
         p.hoverAmount = T.MathUtils.damp(p.hoverAmount, targetHov, 18, dt)
-        tint(p.mesh.material, p.selectedAmount, p.hoverAmount)
+        p.poweredAmount = targetPow
+        tint(p.mesh.material, p.selectedAmount, p.hoverAmount, p.poweredAmount)
         this.dirty = true
       }
     }
