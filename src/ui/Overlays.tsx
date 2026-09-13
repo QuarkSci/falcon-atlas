@@ -1,15 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { Activity, ArrowUpRight } from 'lucide-react'
 import { CONCEPT_BY_ID, PART_BY_ID, SYSTEM_BY_ID } from '@/data/falcon9'
+import { FLIGHT_MILESTONES } from '@/data/falcon9/flight'
 import { useL, useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
 
 export function Caption() {
   const t = useT()
   const l = useL()
-  const { isolate, explode, focus } = useAtlas()
+  const { isolate, explode, focus, flight, flightTime } = useAtlas()
   const name = focus?.kind === 'concept' ? CONCEPT_BY_ID.get(focus.id)?.name : focus ? PART_BY_ID.get(focus.id)?.name : undefined
-  const text = isolate ? (name ? l(name) : t.captionSelected).toUpperCase() : explode > 0.95 ? t.captionInventory : explode > 0.05 ? t.captionSeparated : t.captionAssembled
+  const milestone = [...FLIGHT_MILESTONES].reverse().find((m) => m.t <= flightTime + 1e-6) ?? FLIGHT_MILESTONES[0]
+  const text = flight ? `${l(milestone.name)} · ${milestone.missionTime}`.toUpperCase() : isolate ? (name ? l(name) : t.captionSelected).toUpperCase() : explode > 0.95 ? t.captionInventory : explode > 0.05 ? t.captionSeparated : t.captionAssembled
   return (
     <div className="scene-caption">
       <span className="caption-line" />
@@ -21,11 +23,19 @@ export function Caption() {
 
 export function Footer() {
   const t = useT()
-  const { explode, setAboutOpen } = useAtlas()
+  const { explode, flight, setAboutOpen } = useAtlas()
   return (
     <footer className="studio-footer">
       <span>
-        {explode > 0.8 ? t.dragPan : t.dragOrbit} <b>·</b> {t.pinchZoom} <b>·</b> {t.tapInspect}
+        {explode > 0.8 ? t.dragPan : t.dragOrbit} <b>·</b> {t.pinchZoom} {flight ? (
+          <>
+            <b>·</b> {t.flightHint}
+          </>
+        ) : (
+          <>
+            <b>·</b> {t.tapInspect}
+          </>
+        )}
       </span>
       <button onClick={() => setAboutOpen(true)}>
         {t.credits} <ArrowUpRight size={12} />

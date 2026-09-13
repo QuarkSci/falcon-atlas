@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { FALCON9 } from '@/data/falcon9'
 import { useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
+import { FlightToggle } from '@/ui/Flight'
 
 export function Identity() {
   const t = useT()
@@ -34,6 +35,7 @@ export function TopActions() {
         <span>{t.findPart}</span>
         <kbd>/</kbd>
       </button>
+      <FlightToggle />
       <div className="lang-toggle" role="group" aria-label={t.language}>
         <button className={lang === 'uz' ? 'active' : ''} onClick={() => setLang('uz')} aria-pressed={lang === 'uz'}>
           UZ

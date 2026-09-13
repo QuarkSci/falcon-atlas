@@ -10,10 +10,11 @@ import { CutawayPanel, ViewControls } from '@/ui/ViewControls'
 import { Inspector } from '@/ui/Inspector'
 import { About } from '@/ui/About'
 import { Caption, Footer, HoverLabel, Loading } from '@/ui/Overlays'
+import { FlightDock } from '@/ui/Flight'
 
 export default function App() {
   const t = useT()
-  const { theme, lang, panel, setPanel, cutaway } = useAtlas()
+  const { theme, lang, panel, setPanel, cutaway, flight } = useAtlas()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -48,12 +49,18 @@ export default function App() {
       <ViewControls />
       {cutaway && <CutawayPanel />}
       <Caption />
-      <div className="bottom-dock glass">
-        <button className="mobile-only dock-reset" onClick={() => setPanel('systems')} aria-label={t.systems}>
-          <Layers3 size={19} />
-          <span>{t.systems}</span>
-        </button>
-        <ExplodeDock />
+      <div className={`bottom-dock glass ${flight ? 'flight' : ''}`}>
+        {flight ? (
+          <FlightDock />
+        ) : (
+          <>
+            <button className="mobile-only dock-reset" onClick={() => setPanel('systems')} aria-label={t.systems}>
+              <Layers3 size={19} />
+              <span>{t.systems}</span>
+            </button>
+            <ExplodeDock />
+          </>
+        )}
       </div>
       <Footer />
       <HoverLabel />

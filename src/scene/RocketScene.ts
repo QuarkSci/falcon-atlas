@@ -6,6 +6,7 @@ import type { BuiltModel } from '@/models/types'
 import type { Theme, View } from '@/store/useAtlas'
 import { inventoryLayout, separationVector } from './explode'
 import { flightPose, type FlightPose } from './flight'
+import { createFlame, updateFlame, type Flame } from './flame'
 import { createGround, rethemeGround } from './ground'
 import { createPartMaterial, retheme, tint, type PartMaterial } from './materials'
 import { PointerTap } from './PointerTap'
@@ -113,6 +114,8 @@ export class RocketScene {
   /** Shared matte material for cut interiors, so a slice reads clearly as "hollow" rather than showing the same glossy exterior mirrored inward. */
   private interiorMaterial: T.MeshStandardMaterial
   private labelLayer: HTMLDivElement
+  /** One exhaust flame per engine nozzle, parented to that nozzle's mesh. */
+  private flames: { nozzle: PartEntry; flame: Flame }[] = []
   /** Smoothed explode amount that chases the store value. */
   private amount = 0
   private lastFitAmount = -1
@@ -251,6 +254,21 @@ export class RocketScene {
 
     this.clipIndicator = this.makeClipIndicator()
     this.scene.add(this.clipIndicator)
+
+    // One flame per engine, anchored at its nozzle's exit plane and parented
+    // to that nozzle mesh so it automatically follows the engine through
+    // every explode, isolate and flight-sequence transform.
+    const nozzleIds = [...Array.from({ length: 9 }, (_, i) => `merlin-${i + 1}-nozzle`), 'mvac-nozzle-extension']
+    for (const id of nozzleIds) {
+      const nozzle = this.byId.get(id)
+      if (!nozzle) continue
+      const box = nozzle.bounds
+      const exitRadius = Math.max(0.1, (box.max.x - box.min.x) / 2, (box.max.z - box.min.z) / 2)
+      const flame = createFlame(exitRadius)
+      flame.group.position.set((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2)
+      nozzle.mesh.add(flame.group)
+      this.flames.push({ nozzle, flame })
+    }
 
     this.applyTheme(theme)
 
@@ -700,7 +718,10 @@ export class RocketScene {
       for (const p of this.parts) p.mesh.visible = s.isolate ? selection.has(p.id) : visibleSet.has(p.system) || selection.has(p.id)
       this.dirty = true
     }
-    const showPad = !s.isolate && !s.flight && this.amount < 0.45
+    // Kept visible during flight too, on purpose: as the vehicle climbs away
+    // from it, the pad drifting out of the auto-fit frame is what actually
+    // sells the sense of lifting off.
+    const showPad = !s.isolate && this.amount < 0.45
     this.ground.visible = this.platform.visible = this.padRing.visible = this.padRingInner.visible = showPad
 
     // Offsets.
@@ -764,6 +785,18 @@ export class RocketScene {
         tint(p.mesh.material, p.selectedAmount, p.hoverAmount, p.poweredAmount)
         this.dirty = true
       }
+    }
+
+    // Exhaust flames flicker every frame while firing, so they update
+    // unconditionally rather than only on change like the tint above.
+    if (s.flight) {
+      for (const { nozzle, flame } of this.flames) {
+        if (flame.group.visible || nozzle.poweredAmount > 0.01) this.dirty = true
+        updateFlame(flame, nozzle.poweredAmount)
+      }
+    } else if (this.flames.some((f) => f.flame.group.visible)) {
+      for (const { flame } of this.flames) flame.group.visible = false
+      this.dirty = true
     }
 
     // Controls behave like a 2D board once the inventory is laid out.

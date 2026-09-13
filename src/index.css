@@ -242,6 +242,17 @@ body { font-feature-settings: 'ss01', 'cv11'; -webkit-font-smoothing: antialiase
 .dock-reset { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; color: var(--fa-muted); padding: 8px 10px; border-radius: 6px; }
 .dock-reset:hover { color: var(--foreground); background: var(--fa-line); }
 
+.bottom-dock.flight { width: 560px; }
+.flight-control { flex: 1; min-width: 0; }
+.flight-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 12px; }
+.flight-label strong { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flight-label output { font-size: 11.5px; color: var(--fa-muted); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+.flight-scrubber { position: relative; }
+.flight-ticks { position: absolute; inset: 0; pointer-events: none; }
+.flight-tick { position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: var(--fa-line); border: 1.5px solid var(--fa-glass); transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; padding: 0; }
+.flight-tick:hover { background: var(--fa-muted); }
+.flight-tick.active { background: var(--fa-accent); }
+
 .studio-footer { position: absolute; bottom: 18px; left: 32px; right: 30px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--fa-muted); z-index: 2; }
 .studio-footer b { font-weight: 400; padding: 0 6px; opacity: 0.6; }
 .studio-footer button { display: inline-flex; align-items: center; gap: 4px; color: var(--fa-muted); font-size: 11.5px; padding: 6px 8px; border-radius: 5px; }
