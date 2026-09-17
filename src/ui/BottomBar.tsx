@@ -2,10 +2,11 @@ import { Blocks, Box, Pause, Play, Rocket, RotateCcw } from 'lucide-react'
 import { FLIGHT_MILESTONES } from '@/data/falcon9/flight'
 import { useL, useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
+import { Caption } from './Overlays'
 import { flightAudio, useFlightPlayback } from './Flight'
 
 /** Half the knob's width — the travel of a range input is inset by this much at both ends. */
-const KNOB = 11
+const KNOB = 14
 
 /**
  * macOS-style track: a thin rail with tick marks beneath it, an icon at each
@@ -58,7 +59,7 @@ function Gauge() {
   const { flight, explode, flightTime, flightPlaying, setFlightPlaying, reset } = useAtlas()
   const value = flight ? flightTime : explode
   const atEnd = flightTime >= 1 - 1e-6
-  const r = 21
+  const r = 24
   const circumference = 2 * Math.PI * r
 
   const press = () => {
@@ -73,13 +74,12 @@ function Gauge() {
   return (
     <div className="gauge-card glass">
       <button className="gauge" onClick={press} aria-label={flight ? (flightPlaying ? t.pause : atEnd ? t.restart : t.play) : t.reset} title={flight ? (flightPlaying ? t.pause : t.play) : t.reset}>
-        <svg viewBox="0 0 52 52" aria-hidden>
-          <circle className="gauge-track" cx="26" cy="26" r={r} />
-          <circle className="gauge-value" cx="26" cy="26" r={r} strokeDasharray={circumference} strokeDashoffset={circumference * (1 - value)} />
+        <svg viewBox="0 0 56 56" aria-hidden>
+          <circle className="gauge-track" cx="28" cy="28" r={r} />
+          <circle className="gauge-value" cx="28" cy="28" r={r} strokeDasharray={circumference} strokeDashoffset={circumference * (1 - value)} />
         </svg>
         <span className="gauge-glyph">{flight ? flightPlaying ? <Pause size={16} /> : atEnd ? <RotateCcw size={16} /> : <Play size={16} /> : <RotateCcw size={15} />}</span>
       </button>
-      <output className="gauge-readout">{Math.round(value * 100)}%</output>
     </div>
   )
 }
@@ -91,11 +91,11 @@ function ModeTabs() {
   return (
     <nav className="mode-tabs glass" role="tablist" aria-label={t.modeTabs}>
       <button role="tab" className={`mode-tab ${flight ? '' : 'active'}`} aria-selected={!flight} onClick={() => setFlight(false)}>
-        <Blocks size={19} />
+        <Blocks size={22} />
         <span>{t.tabAnatomy}</span>
       </button>
       <button role="tab" className={`mode-tab ${flight ? 'active' : ''}`} aria-selected={flight} onClick={() => setFlight(true)}>
-        <Rocket size={19} />
+        <Rocket size={22} />
         <span>{t.tabFlight}</span>
       </button>
     </nav>
@@ -114,6 +114,7 @@ export function BottomBar() {
 
   return (
     <div className="bottom-dock">
+      <Caption />
       <div className="dock-row">
         {flight ? (
           <div className="slider-card glass">

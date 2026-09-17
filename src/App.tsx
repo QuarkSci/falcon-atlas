@@ -10,7 +10,7 @@ import { CutawayPanel } from '@/ui/ViewControls'
 import { BottomBar } from '@/ui/BottomBar'
 import { Inspector } from '@/ui/Inspector'
 import { About } from '@/ui/About'
-import { Caption, Footer, HoverLabel, Loading } from '@/ui/Overlays'
+import { Footer, HoverLabel, Loading } from '@/ui/Overlays'
 
 export default function App() {
   const t = useT()
@@ -43,7 +43,6 @@ export default function App() {
       <SystemsPanel />
       {panel === 'search' && <SearchPanel />}
       {cutaway && <CutawayPanel />}
-      <Caption />
       <BottomBar />
       <Footer />
       <HoverLabel />

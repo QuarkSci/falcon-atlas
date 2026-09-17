@@ -23,8 +23,8 @@ const PRESETS: Record<MaterialKey, Preset> = {
   inconel: { color: '#6d7078', metalness: 0.85, roughness: 0.4 },
 }
 
-export const HIGHLIGHT = new T.Color('#3ed2c0')
-export const HOVER = new T.Color('#7fb4ff')
+export const HIGHLIGHT = new T.Color('#0088ff')
+export const HOVER = new T.Color('#9fd0ff')
 export const GLOW = new T.Color('#ff9a4d')
 
 export interface PartMaterial extends T.MeshPhysicalMaterial {

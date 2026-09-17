@@ -366,12 +366,12 @@ export class RocketScene {
     const width = Math.max(30, this.rocket.diameter * 5)
     const fill = new T.Mesh(
       new T.PlaneGeometry(width, height),
-      new T.MeshBasicMaterial({ color: 0x3ed2c0, transparent: true, opacity: 0.05, side: T.DoubleSide, depthWrite: false }),
+      new T.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.05, side: T.DoubleSide, depthWrite: false }),
     )
     fill.position.y = this.rocket.height / 2
     group.add(fill)
     const edges = new T.EdgesGeometry(new T.PlaneGeometry(width, height))
-    const line = new T.LineSegments(edges, new T.LineBasicMaterial({ color: 0x3ed2c0, transparent: true, opacity: 0.35 }))
+    const line = new T.LineSegments(edges, new T.LineBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.35 }))
     line.position.y = this.rocket.height / 2
     group.add(line)
     group.visible = false
