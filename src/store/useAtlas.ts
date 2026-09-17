@@ -3,14 +3,12 @@ import type { SystemId } from '@/data/types'
 import { SYSTEMS } from '@/data/falcon9/systems'
 
 export type Lang = 'en' | 'uz'
-export type Theme = 'dark' | 'light'
 export type View = 'three-quarter' | 'front' | 'side' | 'back'
 export type Panel = 'systems' | 'search' | null
 export type Focus = { kind: 'concept'; id: string } | { kind: 'part'; id: string }
 
 export interface AtlasState {
   lang: Lang
-  theme: Theme
   /** Systems currently shown. */
   visible: SystemId[]
   /** Selected part ids (a concept may select several). */
@@ -41,7 +39,6 @@ export interface AtlasState {
   error: string
 
   setLang: (l: Lang) => void
-  setTheme: (t: Theme) => void
   toggleSystem: (id: SystemId) => void
   showOnly: (ids: SystemId[]) => void
   selectParts: (ids: string[], focus: Focus | null) => void
@@ -74,14 +71,6 @@ const initialLang = (): Lang => {
   return navigator.language?.toLowerCase().startsWith('uz') ? 'uz' : 'en'
 }
 
-const initialTheme = (): Theme => {
-  try {
-    const saved = localStorage.getItem('fa:theme')
-    if (saved === 'dark' || saved === 'light') return saved
-  } catch {}
-  return 'dark'
-}
-
 const sceneDefaults = {
   visible: ALL_SYSTEMS,
   selected: [] as string[],
@@ -102,7 +91,6 @@ const sceneDefaults = {
 
 export const useAtlas = create<AtlasState>((set) => ({
   lang: initialLang(),
-  theme: initialTheme(),
   ...sceneDefaults,
   resetTick: 0,
   aboutOpen: false,
@@ -114,12 +102,6 @@ export const useAtlas = create<AtlasState>((set) => ({
       localStorage.setItem('fa:lang', lang)
     } catch {}
     set({ lang })
-  },
-  setTheme: (theme) => {
-    try {
-      localStorage.setItem('fa:theme', theme)
-    } catch {}
-    set({ theme })
   },
   toggleSystem: (id) =>
     set((s) => ({

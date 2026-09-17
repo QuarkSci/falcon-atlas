@@ -18,7 +18,6 @@ const snapshot = (s: AtlasState): SceneSnapshot => ({
   flight: s.flight,
   flightTime: s.flightTime,
   resetTick: s.resetTick,
-  theme: s.theme,
   inspectorOpen: s.inspectorOpen,
   hovered: s.hovered,
 })
@@ -64,7 +63,6 @@ export function SceneView() {
             onHover: (id) => store.getState().setHovered(id),
             onError: (code) => setError(code === 'context-lost' ? tRef.current.contextLost : tRef.current.webgl),
           },
-          store.getState().theme,
         )
         scene.setLabels(labelsFor(lang))
         scene.setState(snapshot(store.getState()))

@@ -115,34 +115,30 @@ export function BottomBar() {
   return (
     <div className="bottom-dock">
       <div className="dock-row">
-        <div className="slider-card glass">
-          {flight ? (
-            <>
-              <div className="flight-label">
-                <strong>{l(milestone.name)}</strong>
-                <output>{milestone.missionTime}</output>
-              </div>
-              <MacSlider
-                value={flightTime}
-                onChange={setFlightTime}
-                label={t.flightSequence}
-                ticks={FLIGHT_MILESTONES.map((m) => m.t)}
-                activeTick={milestone.t}
-                onTick={setFlightTime}
-                left={<Rocket size={15} />}
-                right={<span className="end-glyph">∞</span>}
-              />
-            </>
-          ) : (
-            <>
-              <div className="flight-label">
-                <strong>{t.explode}</strong>
-                <output>{explode > 0.05 ? t.everyPiece : t.assembled}</output>
-              </div>
-              <MacSlider value={explode} onChange={setExplode} label={t.explode} ticks={EXPLODE_TICKS} left={<Box size={15} />} right={<Blocks size={16} />} />
-            </>
-          )}
-        </div>
+        {flight ? (
+          <div className="slider-card glass">
+            <div className="flight-label">
+              <strong>{l(milestone.name)}</strong>
+              <output>{milestone.missionTime}</output>
+            </div>
+            <MacSlider
+              value={flightTime}
+              onChange={setFlightTime}
+              label={t.flightSequence}
+              ticks={FLIGHT_MILESTONES.map((m) => m.t)}
+              activeTick={milestone.t}
+              onTick={setFlightTime}
+              left={<Rocket size={15} />}
+              right={<span className="end-glyph">∞</span>}
+            />
+          </div>
+        ) : (
+          // Bare track, no caption and no card: the two end icons already say
+          // what the slider does, and the dial beside it reads out the value.
+          <div className="slider-card bare">
+            <MacSlider value={explode} onChange={setExplode} label={t.explode} ticks={EXPLODE_TICKS} left={<Box size={15} />} right={<Blocks size={16} />} />
+          </div>
+        )}
         <Gauge />
       </div>
       <ModeTabs />

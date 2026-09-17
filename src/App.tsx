@@ -14,12 +14,7 @@ import { Caption, Footer, HoverLabel, Loading } from '@/ui/Overlays'
 
 export default function App() {
   const t = useT()
-  const { theme, lang, panel, setPanel, cutaway } = useAtlas()
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.documentElement.style.colorScheme = theme
-  }, [theme])
+  const { lang, panel, setPanel, cutaway } = useAtlas()
 
   useEffect(() => {
     document.documentElement.lang = lang

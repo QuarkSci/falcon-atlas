@@ -38,8 +38,3 @@ export function createGround(pad: string, sky: string, radius = 900) {
   return mesh
 }
 
-export function rethemeGround(mesh: T.Mesh, pad: string, sky: string) {
-  const m = mesh.material as T.ShaderMaterial
-  ;(m.uniforms.pad.value as T.Color).set(pad)
-  ;(m.uniforms.sky.value as T.Color).set(sky)
-}

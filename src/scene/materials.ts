@@ -1,6 +1,5 @@
 import * as T from 'three'
 import type { MaterialKey } from '@/models/types'
-import type { Theme } from '@/store/useAtlas'
 
 interface Preset {
   color: string
@@ -33,7 +32,7 @@ export interface PartMaterial extends T.MeshPhysicalMaterial {
 }
 
 /** One physically-based material per part so selection and hover can tint individually. */
-export function createPartMaterial(key: MaterialKey, theme: Theme): PartMaterial {
+export function createPartMaterial(key: MaterialKey): PartMaterial {
   const p = PRESETS[key]
   const m = new T.MeshPhysicalMaterial({
     color: p.color,
@@ -42,7 +41,7 @@ export function createPartMaterial(key: MaterialKey, theme: Theme): PartMaterial
     clearcoat: p.clearcoat ?? 0,
     clearcoatRoughness: 0.3,
     side: T.DoubleSide,
-    envMapIntensity: theme === 'dark' ? 0.9 : 1.1,
+    envMapIntensity: 0.9,
   }) as PartMaterial
   m.userData = { key, base: new T.Color(p.color) }
   return m
@@ -64,9 +63,4 @@ export function tint(m: PartMaterial, selected: number, hovered: number, powered
     m.emissive.g += GLOW.g * 0.8 * powered
     m.emissive.b += GLOW.b * 0.8 * powered
   }
-}
-
-export function retheme(m: PartMaterial, theme: Theme) {
-  m.envMapIntensity = theme === 'dark' ? 0.9 : 1.1
-  m.needsUpdate = true
 }

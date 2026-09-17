@@ -3,12 +3,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { Part, Rocket, SystemId } from '@/data/types'
 import type { BuiltModel } from '@/models/types'
-import type { Theme, View } from '@/store/useAtlas'
+import type { View } from '@/store/useAtlas'
 import { inventoryLayout, separationVector } from './explode'
 import { flightPose, type FlightPose } from './flight'
 import { createFlame, updateFlame, type Flame } from './flame'
-import { createGround, rethemeGround } from './ground'
-import { createPartMaterial, retheme, tint, type PartMaterial } from './materials'
+import { createGround } from './ground'
+import { createPartMaterial, tint, type PartMaterial } from './materials'
 import { PointerTap } from './PointerTap'
 
 export interface SceneSnapshot {
@@ -23,7 +23,6 @@ export interface SceneSnapshot {
   flight: boolean
   flightTime: number
   resetTick: number
-  theme: Theme
   inspectorOpen: boolean
   hovered: string | null
 }
@@ -63,10 +62,8 @@ interface Insets {
   right: number
 }
 
-const THEME = {
-  dark: { clear: '#0b0e14', ground: '#151a22', platform: '#1b2029', ring: '#465061', hemiSky: 0xbfcbe0, hemiGround: 0x1a1d24 },
-  light: { clear: '#f2f3f4', ground: '#dfe2e5', platform: '#e9ebed', ring: '#8c969f', hemiSky: 0xffffff, hemiGround: 0xa7acb2 },
-} as const
+/** The atlas renders dark only: the pad and sky read as a night launch. */
+const THEME = { clear: '#0b0e14', ground: '#151a22', platform: '#1b2029', ring: '#465061', hemiSky: 0xbfcbe0, hemiGround: 0x1a1d24 } as const
 
 /** Slider fraction where separation ends and the inventory grid begins. */
 const SPLIT = 0.5
@@ -120,7 +117,7 @@ export class RocketScene {
   private amount = 0
   private lastFitAmount = -1
 
-  constructor(host: HTMLElement, rocket: Rocket, model: BuiltModel, cb: SceneCallbacks, theme: Theme) {
+  constructor(host: HTMLElement, rocket: Rocket, model: BuiltModel, cb: SceneCallbacks) {
     this.host = host
     this.rocket = rocket
     this.cb = cb
@@ -166,7 +163,7 @@ export class RocketScene {
     room.dispose()
     pmrem.dispose()
 
-    this.hemi = new T.HemisphereLight(THEME[theme].hemiSky, THEME[theme].hemiGround, 0.9)
+    this.hemi = new T.HemisphereLight(THEME.hemiSky, THEME.hemiGround, 0.9)
     this.scene.add(this.hemi)
     const key = new T.DirectionalLight(0xfff7ee, 2.2)
     key.position.set(-80, 140, 120)
@@ -179,13 +176,13 @@ export class RocketScene {
     this.scene.add(fill)
 
     // Launch pad: gradient ground, a platform and guide rings.
-    this.ground = createGround(THEME[theme].ground, THEME[theme].clear)
+    this.ground = createGround(THEME.ground, THEME.clear)
     this.scene.add(this.ground)
-    this.platform = new T.Mesh(new T.CylinderGeometry(14, 14.4, 0.5, 96), new T.MeshStandardMaterial({ color: THEME[theme].platform, metalness: 0.1, roughness: 0.7 }))
+    this.platform = new T.Mesh(new T.CylinderGeometry(14, 14.4, 0.5, 96), new T.MeshStandardMaterial({ color: THEME.platform, metalness: 0.1, roughness: 0.7 }))
     this.platform.position.y = -0.3
     this.scene.add(this.platform)
-    this.padRing = this.ring(12.6, 0.5, theme)
-    this.padRingInner = this.ring(9.5, 0.22, theme)
+    this.padRing = this.ring(12.6, 0.5)
+    this.padRingInner = this.ring(9.5, 0.22)
     this.scene.add(this.padRing, this.padRingInner)
 
     this.stars = this.makeStars()
@@ -216,7 +213,7 @@ export class RocketScene {
         console.warn(`No geometry for part ${part.id}`)
         continue
       }
-      const material = createPartMaterial(built.material, theme)
+      const material = createPartMaterial(built.material)
       material.clippingPlanes = [this.clipPlane]
       const mesh = new T.Mesh(built.geometry, material)
       mesh.name = part.id
@@ -270,7 +267,7 @@ export class RocketScene {
       this.flames.push({ nozzle, flame })
     }
 
-    this.applyTheme(theme)
+    this.renderer.setClearColor(THEME.clear)
 
     this.observer = new ResizeObserver(() => this.resize())
     this.observer.observe(host)
@@ -333,8 +330,8 @@ export class RocketScene {
 
   // ── Setup helpers ───────────────────────────────────────────────────
 
-  private ring(radius: number, opacity: number, theme: Theme) {
-    const m = new T.Mesh(new T.RingGeometry(radius, radius + 0.08, 160), new T.MeshBasicMaterial({ color: THEME[theme].ring, transparent: true, opacity, side: T.DoubleSide }))
+  private ring(radius: number, opacity: number) {
+    const m = new T.Mesh(new T.RingGeometry(radius, radius + 0.08, 160), new T.MeshBasicMaterial({ color: THEME.ring, transparent: true, opacity, side: T.DoubleSide }))
     m.rotation.x = -Math.PI / 2
     m.position.y = -0.04
     return m
@@ -380,20 +377,6 @@ export class RocketScene {
     group.visible = false
     group.renderOrder = 5
     return group
-  }
-
-  private applyTheme(theme: Theme) {
-    const t = THEME[theme]
-    this.renderer.setClearColor(t.clear)
-    rethemeGround(this.ground, t.ground, t.clear)
-    ;(this.platform.material as T.MeshStandardMaterial).color.set(t.platform)
-    ;(this.padRing.material as T.MeshBasicMaterial).color.set(t.ring)
-    ;(this.padRingInner.material as T.MeshBasicMaterial).color.set(t.ring)
-    this.hemi.color.set(t.hemiSky)
-    this.hemi.groundColor.set(t.hemiGround)
-    this.stars.visible = theme === 'dark'
-    for (const p of this.parts) retheme(p.mesh.material, theme)
-    this.dirty = true
   }
 
   private resize() {
@@ -733,7 +716,6 @@ export class RocketScene {
     const last = this.last
     const first = last === null
 
-    if (last?.theme !== s.theme) this.applyTheme(s.theme)
 
     // Cutaway plane: rotate to the chosen azimuth, or push it far away to
     // disable clipping entirely (cheaper than toggling clippingPlanes on
