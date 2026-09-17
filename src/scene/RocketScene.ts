@@ -89,6 +89,18 @@ export class RocketScene {
   private dirty = true
   /** Extra frames rendered after the last change so compositors always get a settled image. */
   private settle = 0
+
+  /**
+   * Render for a short stretch rather than a single frame. The drawing
+   * buffer is not preserved, so a lone frame drawn before the page's first
+   * real paint — or while the tab was hidden — is simply discarded, and the
+   * canvas shows empty until something happens to touch it again. A brief
+   * warm-up survives that.
+   */
+  private warmUp(frames = 24) {
+    this.settle = Math.max(this.settle, frames)
+    this.dirty = true
+  }
   private disposed = false
   private state: SceneSnapshot | null = null
   private last: SceneSnapshot | null = null
@@ -268,7 +280,9 @@ export class RocketScene {
     }
 
     this.renderer.setClearColor(THEME.clear)
+    this.warmUp()
 
+    document.addEventListener('visibilitychange', this.onVisible)
     this.observer = new ResizeObserver(() => this.resize())
     this.observer.observe(host)
     this.resize()
@@ -314,6 +328,7 @@ export class RocketScene {
     el.removeEventListener('pointerleave', this.onLeave)
     el.removeEventListener('webglcontextlost', this.onContextLost)
     this.host.removeEventListener('wheel', this.onWheel, { capture: true })
+    document.removeEventListener('visibilitychange', this.onVisible)
     this.controls.dispose()
     this.scene.traverse((o) => {
       if (o instanceof T.Mesh || o instanceof T.Points || o instanceof T.LineSegments) {
@@ -391,7 +406,7 @@ export class RocketScene {
     this.isolateKey = ''
     this.lastFitAmount = -1
     if (this.state) this.frameFor(this.state, false)
-    this.dirty = true
+    this.warmUp()
   }
 
   // ── Camera ──────────────────────────────────────────────────────────
@@ -608,6 +623,10 @@ export class RocketScene {
     const rect = this.host.getBoundingClientRect()
     this.cb.onSelect(this.pick(e.clientX - rect.left, e.clientY - rect.top))
   }
+  private onVisible = () => {
+    if (!document.hidden) this.warmUp()
+  }
+
   private onContextLost = (e: Event) => {
     e.preventDefault()
     this.cb.onError('context-lost')
@@ -848,7 +867,7 @@ export class RocketScene {
     if (c.autoRotate) this.dirty = true
 
     this.last = s
-    if (this.dirty) this.settle = 3
+    if (this.dirty) this.settle = Math.max(this.settle, 3)
     if (this.settle > 0) {
       this.settle--
       this.renderer.render(this.scene, this.camera)
