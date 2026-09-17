@@ -455,6 +455,11 @@ export class RocketScene {
         const r = el.getBoundingClientRect()
         if (r.width > 0 && overlapsH(r)) grow('top', r.bottom - hostRect.top + 16)
       }
+      const rail = root.querySelector('.side-rail')
+      if (rail) {
+        const r = rail.getBoundingClientRect()
+        if (r.width > 0 && overlapsV(r)) grow('left', r.right - hostRect.left + gap)
+      }
       const dock = root.querySelector('.bottom-dock')
       if (dock) {
         const r = dock.getBoundingClientRect()
@@ -463,7 +468,7 @@ export class RocketScene {
       if (mobile) {
         // Panels are bottom sheets or a top strip on narrow screens.
         const inspector = root.querySelector('.inspector.open')
-        const systems = root.querySelector('.systems-panel.mobile-open')
+        const systems = root.querySelector('.sheet.open')
         const search = root.querySelector('.search-panel')
         for (const el of [inspector, systems]) {
           if (!el) continue
@@ -475,7 +480,7 @@ export class RocketScene {
           if (r.width > 0) grow('top', r.bottom - hostRect.top + gap)
         }
       } else {
-        const systems = root.querySelector('.systems-panel')
+        const systems = root.querySelector('.sheet.open')
         if (systems) {
           const r = systems.getBoundingClientRect()
           if (r.width > 0 && overlapsV(r)) grow('left', r.right - hostRect.left + gap)
@@ -647,14 +652,17 @@ export class RocketScene {
       this.camera.position.copy(c.target).add(offset)
     } else {
       // Plain scroll: pan across the view plane, screen-space proportional
-      // like OrbitControls' own drag-to-pan.
+      // like OrbitControls' own drag-to-pan. The camera moves *with* the
+      // fingers (so the vehicle travels the opposite way), which is what
+      // scrolling a document does and what this reads as in practice — the
+      // reverse felt like dragging the model around and was disorienting.
       const offset = this.camera.position.clone().sub(c.target)
       const targetDistance = offset.length() * Math.tan(T.MathUtils.degToRad(this.camera.fov / 2))
       const panX = new T.Vector3().setFromMatrixColumn(this.camera.matrix, 0)
       const panY = new T.Vector3().setFromMatrixColumn(this.camera.matrix, 1)
       const h = this.host.clientHeight || 1
-      panX.multiplyScalar((-e.deltaX * 2 * targetDistance) / h)
-      panY.multiplyScalar((e.deltaY * 2 * targetDistance) / h)
+      panX.multiplyScalar((e.deltaX * 2 * targetDistance) / h)
+      panY.multiplyScalar((-e.deltaY * 2 * targetDistance) / h)
       const pan = panX.add(panY)
       this.camera.position.add(pan)
       c.target.add(pan)

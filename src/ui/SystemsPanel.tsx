@@ -1,33 +1,59 @@
-import { useMemo } from 'react'
-import { Layers3, X } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Eye, X } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { FALCON9, SYSTEMS } from '@/data/falcon9'
 import type { SystemId } from '@/data/types'
 import { useL, useT } from '@/i18n'
 import { useAtlas } from '@/store/useAtlas'
-import { useDraggable } from './useDraggable'
+
+/** Distance the sheet must be pulled down before release dismisses it. */
+const DISMISS_PX = 90
+
+/**
+ * iOS sheet behaviour: the grabber drags the sheet down only (never up past
+ * its resting place), and a release past `DISMISS_PX` closes it instead of
+ * springing back.
+ */
+function useSheetDrag(onDismiss: () => void) {
+  const [dy, setDy] = useState(0)
+  const start = useRef<number | null>(null)
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    e.preventDefault()
+    start.current = e.clientY
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }, [])
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
+    if (start.current === null) return
+    setDy(Math.max(0, e.clientY - start.current))
+  }, [])
+
+  const end = useCallback(() => {
+    if (start.current === null) return
+    start.current = null
+    setDy((d) => {
+      if (d > DISMISS_PX) onDismiss()
+      return 0
+    })
+  }, [onDismiss])
+
+  return {
+    dy,
+    handleProps: { onPointerDown, onPointerMove, onPointerUp: end, onPointerCancel: end },
+  }
+}
 
 const STRUCTURE: SystemId[] = ['airframe', 'tanks']
 const ENGINES: SystemId[] = ['propulsion', 'plumbing', 'pressurization']
-
-/** Icon-only symbol; lives in the left side rail. */
-export function SystemsToggle() {
-  const t = useT()
-  const { panel, setPanel } = useAtlas()
-  const open = panel === 'systems'
-  return (
-    <button className={open ? 'active' : ''} onClick={() => setPanel(open ? null : 'systems')} aria-pressed={open} aria-label={t.systems} title={t.systems}>
-      <Layers3 size={18} />
-    </button>
-  )
-}
 
 export function SystemsPanel() {
   const t = useT()
   const l = useL()
   const { visible, isolate, selected, toggleSystem, showOnly, panel, setPanel } = useAtlas()
-  const { panelRef, style, handleProps } = useDraggable()
+  const close = useCallback(() => setPanel(null), [setPanel])
+  const { dy, handleProps } = useSheetDrag(close)
   const counts = useMemo(() => Object.fromEntries(SYSTEMS.map((s) => [s.id, FALCON9.parts.filter((p) => p.system === s.id).length])) as Record<SystemId, number>, [])
   const active = SYSTEMS.filter((s) => counts[s.id] > 0)
   const visibleCount = FALCON9.parts.filter((p) => (isolate ? selected.includes(p.id) : visible.includes(p.system) || selected.includes(p.id))).length
@@ -35,19 +61,24 @@ export function SystemsPanel() {
   const open = panel === 'systems'
 
   return (
-    <section ref={panelRef as React.RefObject<HTMLElement>} style={style} className={`systems-panel glass floating-panel ${open ? 'open' : ''}`} aria-label={t.systems} aria-hidden={!open}>
-      <div className="drag-handle" {...handleProps} />
-      <div className="panel-heading">
-        <span>{t.systems}</span>
-        <Badge variant="secondary" className="small-number">
-          {active.length}
-        </Badge>
-        <button className="icon-button" onClick={() => setPanel(null)} aria-label={t.close}>
-          <X size={18} />
+    <section
+      className={`systems-panel sheet glass ${open ? 'open' : ''} ${dy ? 'dragging' : ''}`}
+      style={{ '--sheet-dy': `${dy}px` } as React.CSSProperties}
+      aria-label={t.systems}
+      aria-hidden={!open}
+    >
+      <div className="sheet-grabber" {...handleProps} />
+      <div className="sheet-head">
+        <button className="sheet-round" onClick={close} aria-label={t.close}>
+          <X size={17} />
+        </button>
+        <span className="sheet-title">{t.systems}</span>
+        <button className="sheet-round accent" onClick={() => showOnly(active.map((s) => s.id))} aria-label={t.showAll} title={t.showAll}>
+          <Eye size={16} />
         </button>
       </div>
       <div className="presets">
-        <button aria-pressed={active.every((s) => visible.includes(s.id))} onClick={() => showOnly(active.map((s) => s.id))}>
+        <button aria-pressed={sameSet(active.map((s) => s.id))} onClick={() => showOnly(active.map((s) => s.id))}>
           {t.all}
         </button>
         <button aria-pressed={sameSet(STRUCTURE.filter((id) => counts[id] > 0))} onClick={() => showOnly(STRUCTURE.filter((id) => counts[id] > 0))}>

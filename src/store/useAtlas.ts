@@ -34,10 +34,6 @@ export interface AtlasState {
   /** Bumped to force a camera re-fit. */
   resetTick: number
   panel: Panel
-  /** Whether the explode-slider dock is expanded (it starts collapsed to a single icon). */
-  explodeOpen: boolean
-  /** Whether the camera view-controls column is expanded (it starts collapsed to a single icon). */
-  viewControlsOpen: boolean
   inspectorOpen: boolean
   aboutOpen: boolean
   hovered: string | null
@@ -60,8 +56,6 @@ export interface AtlasState {
   setFlightTime: (t: number) => void
   setFlightPlaying: (v: boolean) => void
   setPanel: (p: Panel) => void
-  setExplodeOpen: (v: boolean) => void
-  setViewControlsOpen: (v: boolean) => void
   setInspectorOpen: (v: boolean) => void
   setAboutOpen: (v: boolean) => void
   setHovered: (id: string | null) => void
@@ -102,8 +96,6 @@ const sceneDefaults = {
   flightTime: 0,
   flightPlaying: false,
   panel: null as Panel,
-  explodeOpen: false,
-  viewControlsOpen: false,
   inspectorOpen: false,
   hovered: null as string | null,
 }
@@ -155,8 +147,6 @@ export const useAtlas = create<AtlasState>((set) => ({
   setFlightTime: (flightTime) => set({ flightTime: Math.max(0, Math.min(1, flightTime)), flightPlaying: false }),
   setFlightPlaying: (flightPlaying) => set((s) => ({ flightPlaying, flightTime: flightPlaying && s.flightTime >= 1 ? 0 : s.flightTime })),
   setPanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel, inspectorOpen: panel ? false : s.inspectorOpen })),
-  setExplodeOpen: (explodeOpen) => set({ explodeOpen }),
-  setViewControlsOpen: (viewControlsOpen) => set({ viewControlsOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setAboutOpen: (aboutOpen) => set({ aboutOpen, panel: null, inspectorOpen: false }),
   setHovered: (hovered) => set({ hovered }),
