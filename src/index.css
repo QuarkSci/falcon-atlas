@@ -150,24 +150,27 @@
   --fa-fill: color-mix(in oklab, #fff 13%, transparent);
 
   /*
-   * Every control's size comes from these, so a breakpoint only has to
-   * re-declare the scale instead of restating each rule. Desktop values
-   * below; phone and tablet override them further down.
+   * One base unit, ramping smoothly with the viewport, and every control
+   * derived from it — so the chrome is sized for the device it is on
+   * rather than snapping between two fixed sets at a breakpoint. A phone
+   * lands near 11px, a tablet near 11.5, a desktop at the 12px ceiling.
    */
-  --ctl-h: 28px;          /* height of a tab / icon button in the top bar */
-  --ctl-pad: 3px;         /* padding inside a pill that holds controls */
-  --ctl-font: 12.5px;
-  --icon-w: 32px;         /* width of an icon-only button */
-  --rail-w: 36px;
-  --mark: 38px;           /* the top-left circular mark */
-  --sheet-w: 292px;
-  --slider-w: 312px;
-  --knob: 20px;
-  --gauge: 56px;
-  --mode-h: 40px;
-  --mode-w: 68px;
-  --side-panel-w: 320px;  /* inspector and search */
-  --gap-edge: 18px;       /* distance from the viewport edge */
+  --u: clamp(11px, 0.19vw + 10.3px, 12px);
+
+  --ctl-h: calc(var(--u) * 2.33);   /* tab / icon button height */
+  --ctl-pad: 3px;
+  --ctl-font: calc(var(--u) * 1.04);
+  --icon-w: calc(var(--u) * 2.67);
+  --rail-w: calc(var(--u) * 3);
+  --mark: calc(var(--u) * 3.17);
+  --knob: calc(var(--u) * 1.67);
+  --gauge: calc(var(--u) * 4.1);
+  --mode-h: calc(var(--u) * 3.17);
+  --mode-w: calc(var(--u) * 5.4);
+  --gap-edge: calc(var(--u) * 1.5);
+  --sheet-w: clamp(244px, 20vw + 130px, 292px);
+  --slider-w: clamp(210px, 22vw + 90px, 312px);
+  --side-panel-w: clamp(276px, 22vw + 100px, 320px);
   --radius: 0.5rem;
   --background: oklch(0.17 0.012 255);
   --popover: oklch(0.2 0.012 255);
@@ -296,6 +299,8 @@ body { font-feature-settings: 'ss01', 'cv11'; -webkit-font-smoothing: antialiase
 .pill-icon:hover { color: var(--foreground); background: var(--fa-fill); }
 .pill-icon.active { color: var(--fa-accent); background: var(--fa-accent-soft); }
 .pill-icon:disabled { opacity: 0.3; background: none; }
+.pill-mark { display: none; align-items: center; justify-content: center; width: var(--icon-w); height: var(--ctl-h); border-radius: 999px; color: var(--fa-accent); }
+.pill-mark:hover { background: var(--fa-fill); }
 .pill-divider { width: 1px; height: 16px; background: var(--fa-line); margin: 0 4px; }
 
 .tab-group { display: flex; align-items: center; gap: 0; }
@@ -425,12 +430,12 @@ body { font-feature-settings: 'ss01', 'cv11'; -webkit-font-smoothing: antialiase
 
 /* Circular dial beside the slider: explode amount, or timeline position. */
 .gauge-card { width: var(--gauge); height: var(--gauge); border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.gauge { position: relative; width: calc(var(--gauge) - 14px); height: calc(var(--gauge) - 14px); display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--foreground); }
+.gauge { position: relative; width: calc(var(--gauge) - 12px); height: calc(var(--gauge) - 12px); display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--foreground); }
 .gauge > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .gauge circle { fill: none; stroke-width: 4.5; stroke-linecap: round; }
 .gauge-track { stroke: color-mix(in oklab, #fff 22%, transparent); }
 .gauge-value { stroke: var(--fa-accent); transition: stroke-dashoffset 0.12s linear; }
-.gauge-glyph { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: var(--foreground); }
+.gauge-glyph { display: flex; align-items: center; justify-content: center; width: calc(var(--gauge) * 0.44); height: calc(var(--gauge) * 0.44); border-radius: 50%; color: var(--foreground); }
 .gauge:hover .gauge-glyph { background: var(--fa-fill); }
 
 /* Bottom tab bar. */
@@ -508,59 +513,35 @@ body { font-feature-settings: 'ss01', 'cv11'; -webkit-font-smoothing: antialiase
   .tab { min-width: var(--icon-w); padding: 0 8px; }
 }
 
-/* Tablet */
+/* Tablet: the chrome sits closer to the edges, panels lose some height. */
 @media (max-width: 1024px) {
-  :root {
-    --ctl-h: 26px;
-    --ctl-font: 12px;
-    --icon-w: 30px;
-    --rail-w: 34px;
-    --mark: 34px;
-    --sheet-w: 272px;
-    --slider-w: 276px;
-    --knob: 19px;
-    --gauge: 52px;
-    --mode-h: 38px;
-    --mode-w: 62px;
-    --side-panel-w: 300px;
-    --gap-edge: 14px;
-  }
-  .sheet { top: 68px; bottom: 156px; }
-  .inspector { top: 58px; }
-  .search-panel { top: 58px; }
+  .sheet { top: 64px; bottom: 150px; }
+  .inspector,
+  .search-panel { top: 56px; }
 }
 
 /* Phone */
 @media (max-width: 640px) {
-  :root {
-    --ctl-h: 30px;        /* back up a little: these become touch targets */
-    --icon-w: 31px;
-    --rail-w: 32px;
-    --mark: 32px;
-    --slider-w: auto;
-    --knob: 22px;
-    --gauge: 50px;
-    --mode-h: 42px;
-    --mode-w: 50%;
-    --gap-edge: 10px;
-  }
-  /* The bar cannot sit beside the mark at this width, so it goes under it. */
-  .top-actions { top: calc(var(--gap-edge) + var(--mark) + 8px); left: var(--gap-edge); right: var(--gap-edge); justify-content: space-between; border-radius: 20px; }
+  :root { --ctl-pad: 2px; }
+  /* A lone circle floating above the bar reads as a stray element, so the
+     mark moves inside the bar and the standalone header steps aside. */
+  .identity { display: none; }
+  .pill-mark { display: inline-flex; }
+  .top-actions { top: var(--gap-edge); left: var(--gap-edge); right: var(--gap-edge); justify-content: space-between; border-radius: 18px; }
   .top-actions .pill-divider { display: none; }
   .tab { padding: 0 4px; }
   .lang-toggle { margin: 0; }
-  .side-rail { top: auto; bottom: calc(var(--gap-edge) + 116px); transform: none; }
-  .rail-item { min-height: 36px; font-size: 11px; }
+  .side-rail { left: var(--gap-edge); }
+  .rail-item { min-height: 38px; font-size: 11px; }
   /* A real bottom sheet: full width, springing off the bottom edge. */
   .sheet { left: var(--gap-edge); right: var(--gap-edge); width: auto; top: auto; bottom: 0; max-height: 52dvh; border-radius: 22px 22px 0 0; padding-bottom: 6px; transform: translateY(100%); }
   .sheet.open { transform: translateY(var(--sheet-dy, 0px)); }
-  .search-panel { left: var(--gap-edge); right: var(--gap-edge); width: auto; top: calc(var(--gap-edge) + var(--mark) + 52px); }
-  .cutaway-panel { left: var(--gap-edge); right: var(--gap-edge); width: auto; top: auto; bottom: 200px; transform: translateY(10px) translate(var(--drag-x, 0px), var(--drag-y, 0px)); }
-  .bottom-dock { left: var(--gap-edge); right: var(--gap-edge); bottom: 26px; transform: none; }
+  .search-panel { left: var(--gap-edge); right: var(--gap-edge); width: auto; top: calc(var(--gap-edge) + var(--ctl-h) + 14px); }
+  .cutaway-panel { left: var(--gap-edge); right: var(--gap-edge); width: auto; top: auto; bottom: 190px; transform: translateY(10px) translate(var(--drag-x, 0px), var(--drag-y, 0px)); }
+  /* The slider stretches; the tab bar stays its own size and centred. */
+  .bottom-dock { left: var(--gap-edge); right: var(--gap-edge); bottom: 20px; transform: none; }
   .dock-row { width: 100%; }
-  .slider-card { flex: 1; min-width: 0; }
-  .mode-tabs { width: 100%; }
-  .mode-tab { flex: 1; }
+  .slider-card { flex: 1; min-width: 0; width: auto; }
   /* No room for it once the dock spans the width. */
   .studio-footer { display: none; }
   .inspector { top: auto; left: var(--gap-edge); right: var(--gap-edge); bottom: var(--gap-edge); width: auto; max-height: 56dvh; transform: translateY(24px); }
@@ -570,8 +551,8 @@ body { font-feature-settings: 'ss01', 'cv11'; -webkit-font-smoothing: antialiase
 /* Short windows: the vehicle needs whatever height is left. Not on a
    phone, where the sheet is anchored to the bottom edge already. */
 @media (max-height: 620px) and (min-width: 641px) {
-  .sheet { top: 60px; bottom: 140px; }
-  .bottom-dock { bottom: 20px; gap: 8px; }
+  .sheet { top: 56px; bottom: 130px; }
+  .bottom-dock { bottom: 18px; gap: 8px; }
   .studio-footer { display: none; }
 }
 

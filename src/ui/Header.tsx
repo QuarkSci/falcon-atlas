@@ -10,18 +10,27 @@ const VIEWS: { id: View; glyph: string }[] = [
   { id: 'back', glyph: 'B' },
 ]
 
-/** Circular mark in the top-left corner; opens the about panel. */
-export function Identity() {
+/** The vehicle mark. Stands alone in the corner on wide screens and rides
+ *  inside the top bar on a phone, where a lone circle just floats. */
+function Mark({ className }: { className: string }) {
   const t = useT()
   const setAboutOpen = useAtlas((s) => s.setAboutOpen)
   return (
+    <button className={className} onClick={() => setAboutOpen(true)} aria-label={t.about} title={t.about}>
+      <svg viewBox="0 0 24 24" width="62%" height="62%" aria-hidden>
+        <path d="M12 2.6c2.6 2.4 4 5.8 4 9.4 0 3-.9 5.6-2.4 7.6h-3.2C8.9 17.6 8 15 8 12c0-3.6 1.4-7 4-9.4Z" fill="currentColor" />
+        <path d="M8 13.4 5.2 16v3.4L8 17.6Zm8 0 2.8 2.6v3.4L16 17.6Z" fill="currentColor" opacity=".55" />
+      </svg>
+    </button>
+  )
+}
+
+/** Circular mark in the top-left corner; opens the about panel. */
+export function Identity() {
+  const t = useT()
+  return (
     <header className="identity">
-      <button className="identity-mark glass" onClick={() => setAboutOpen(true)} aria-label={t.about} title={t.about}>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
-          <path d="M12 2.6c2.6 2.4 4 5.8 4 9.4 0 3-.9 5.6-2.4 7.6h-3.2C8.9 17.6 8 15 8 12c0-3.6 1.4-7 4-9.4Z" fill="currentColor" />
-          <path d="M8 13.4 5.2 16v3.4L8 17.6Zm8 0 2.8 2.6v3.4L16 17.6Z" fill="currentColor" opacity=".55" />
-        </svg>
-      </button>
+      <Mark className="identity-mark glass" />
       <div className="identity-text">
         <div className="eyebrow">
           <span className="status-dot" /> {t.eyebrow}
@@ -46,6 +55,7 @@ export function TopActions() {
   const frontOnly = explode > 0.8
   return (
     <nav className="top-actions glass" aria-label={t.tools}>
+      <Mark className="pill-mark" />
       <button className={`pill-icon ${panel === 'systems' ? 'active' : ''}`} onClick={() => setPanel('systems')} aria-pressed={panel === 'systems'} aria-label={t.systems} title={t.systems}>
         <PanelLeft size={17} />
       </button>
