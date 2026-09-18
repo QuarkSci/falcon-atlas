@@ -117,6 +117,7 @@ export class RocketScene {
   private fly: { pos: T.Vector3; target: T.Vector3; t: number } | null = null
   private isolateKey = ''
   private layoutKey = ''
+  private selectionKey = ''
   /** Shared clip plane for the cutaway view; pushed far away (constant) to disable. */
   private clipPlane = new T.Plane(new T.Vector3(1, 0, 0), 1e4)
   private clipIndicator: T.Group
@@ -493,6 +494,25 @@ export class RocketScene {
     return base
   }
 
+  /** World-space centre of the selected parts, with explode offsets applied. */
+  private selectionCentre(selected: string[]) {
+    const ids = new Set(selected)
+    const box = new T.Box3()
+    for (const p of this.parts) if (p.mesh.visible && ids.has(p.id)) box.union(p.bounds.clone().translate(p.mesh.position))
+    return box.isEmpty() ? null : box.getCenter(new T.Vector3())
+  }
+
+  /**
+   * Move the orbit pivot onto `centre` and carry the camera the same way, so
+   * the view neither swings nor changes distance — the point simply settles
+   * where the camera was already looking. Orbiting then turns around it.
+   */
+  private pivotTo(centre: T.Vector3, animate: boolean) {
+    const delta = centre.clone().sub(this.controls.target)
+    if (delta.lengthSq() < 1e-6) return
+    this.goTo(this.camera.position.clone().add(delta), centre, animate)
+  }
+
   /** Aim the camera so `box` fills the region left free by `insets`. */
   private fitBox(box: T.Box3, view: View, insets: Insets, animate: boolean, margin = 1.08) {
     const w = this.host.clientWidth,
@@ -796,12 +816,21 @@ export class RocketScene {
     const viewChanged = first || last.resetTick !== s.resetTick || last.view !== s.view
     const isolateKey = s.isolate ? `${s.selected.join(',')}:${s.inspectorOpen}` : ''
     const isolateChanged = isolateKey !== this.isolateKey
+    const selectionKey = s.selected.join(',')
+    const selectionChanged = !first && selectionKey !== this.selectionKey
+    this.selectionKey = selectionKey
     if (s.flight) {
       if (flightTimeChanged) this.frameFor(s, false)
     } else if (viewChanged || isolateChanged) {
       this.frameFor(s, !first)
       this.isolateKey = isolateKey
       this.lastFitAmount = this.amount
+    } else if (selectionChanged && !s.isolate) {
+      // Selecting a part makes it the thing the camera turns around; clearing
+      // the selection hands the pivot back to the vehicle as a whole.
+      const centre = s.selected.length ? this.selectionCentre(s.selected) : null
+      if (centre) this.pivotTo(centre, true)
+      else this.frameFor(s, true)
     } else if (moving && !s.isolate && this.amount > 0.02) {
       // Follow the expanding assembly while the slider moves.
       this.frameFor(s, false)
