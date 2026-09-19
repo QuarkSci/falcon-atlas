@@ -6,7 +6,7 @@
 > o'zbek tilida bo'lishi kutiladi. Kodga oid izohlar ingliz tilida (mavjud kod
 > uslubiga mos).
 >
-> Oxirgi yangilanish: 2026-09-18 (`604d84b` commitidan keyin).
+> Oxirgi yangilanish: 2026-09-19 (GitHub Pages deploy'dan keyin).
 
 ## 1. Loyiha nima
 
@@ -23,9 +23,17 @@ yozmaslik — bir necha marta xato aynan shu sababdan (tekshirmasdan) yuz berdi
 (pastda "Ma'lum xatolar tarixi" bo'limida batafsil).
 
 Loyiha papkasi: `/Users/apple/Documents/Loyihalar/falcon-atlas` — git repo,
-faqat **bitta branch: `master`**, GitHub remote **yo'q** (hali push
-qilinmagan, faqat local commit'lar). Agar GitHub'ga chiqarish so'ralsa,
-`gh repo create` bilan yangi repo yaratib shu `master`ni push qilish kifoya.
+bitta branch: `master`.
+
+- **GitHub:** https://github.com/QuarkSci/falcon-atlas (public). Akkaunt
+  nomi **QuarkSci** — git sozlamasidagi `MuhammadYusuf-scientist` bilan
+  adashtirmang. `gh` CLI o'rnatilgan va shu akkaunt bilan login qilingan.
+- **Jonli sayt:** https://quarksci.github.io/falcon-atlas/ — GitHub Pages,
+  `master`ga har push'da `.github/workflows/deploy.yml` avtomatik build
+  qilib chiqaradi (~45 s). Deploy holatini `gh run list` bilan ko'ring.
+- Pages saytni `/falcon-atlas/` ostida beradi: `vite.config.ts`dagi `base`
+  `VITE_BASE` muhit o'zgaruvchisidan olinadi (workflow o'rnatadi, lokalda
+  '/'). Lokalda aynan Pages'dagi kabi ko'rish: `npm run preview:pages`.
 
 ## 2. Texnologiyalar (stack)
 
@@ -303,7 +311,6 @@ Barcha quyidagilar **haqiqiy brauzerda tekshirilgan** (screenshot bilan):
 5. **Boostback flip animatsiya qilinmagan** — ATAYIN (xavf/foyda nisbati
    past); faqat caption orqali tushuntiriladi.
 6. **Bundle hajmi** ~1.03 MB (gzip 290 KB) — code splitting qilinmagan.
-7. **GitHub'ga hali push qilinmagan.**
 
 ## 10. Keyingi qadam (PLAN.md bo'yicha qolgan bosqichlar)
 
@@ -312,10 +319,10 @@ Barcha quyidagilar **haqiqiy brauzerda tekshirilgan** (screenshot bilan):
 - **7-bosqich: Performance, README, ATTRIBUTION** — HALI QILINMAGAN:
   - `public/`da faqat `favicon.svg` va `icons.svg` — **ATTRIBUTION.md yo'q**
     (manbalar hozircha kod ichidagi `SRC`/`sources` va `About.tsx`da).
-  - `README.md` hali **Vite scaffold matni** — Falcon Atlas uchun yozilmagan.
   - FPS/profiling qilinmagan.
-  - Haqiqiy mobil qurilmada test.
-- **GitHub + Vercel deploy** — hali qilinmagan.
+  - Haqiqiy mobil qurilmada test (endi jonli havola bor — telefonda ochib
+    ko'rish mumkin).
+- ~~GitHub + deploy~~ — 2026-09-19 da bajarildi (1-bo'limga qarang).
 
 ## 11. Ishlash uslubi bo'yicha eslatmalar (muhim!)
 
