@@ -4,7 +4,7 @@ Interactive 3D anatomy of the SpaceX Falcon 9 Block 5 — every part, system
 by system, from the Merlin turbopumps to the fairing separation latches.
 Inspired by [Human Atlas](https://github.com/ashemag/human-atlas).
 
-**Live:** https://muhammadyusuf-scientist.github.io/falcon-atlas/
+**Live:** https://quarksci.github.io/falcon-atlas/
 
 ## What it does
 
